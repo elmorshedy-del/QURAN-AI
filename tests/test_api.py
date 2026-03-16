@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 from fastapi.testclient import TestClient
 
 import server.main as main
 from tajweed_ml import api
+from tajweed_ml.config import STORAGE_ROOT_ENV
 
 
 class _StubError:
@@ -62,3 +64,29 @@ def test_websocket_summary_flow(monkeypatch) -> None:
             summary = websocket.receive_json()
     assert summary["type"] == "summary"
     assert summary["total_errors"] == 0
+
+
+def test_served_audio_url_rewrites_manifest_absolute_paths(monkeypatch, tmp_path) -> None:
+    audio_dir = tmp_path / "audio" / "husary" / "words" / "1"
+    audio_dir.mkdir(parents=True)
+    clip_path = audio_dir / "001_001_00_بسم.wav"
+    clip_path.write_bytes(b"fake")
+    manifest_path = audio_dir / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "1:1": [
+                    {
+                        "word_index": 0,
+                        "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/1/001_001_00_بسم.wav",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv(STORAGE_ROOT_ENV, str(tmp_path))
+
+    assert main._served_audio_url(1, 1, 0) == "/audio/husary/words/1/001_001_00_بسم.wav"

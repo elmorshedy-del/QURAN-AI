@@ -30,6 +30,30 @@ def load_quran_data() -> dict[str, list[str]]:
     return load_quran_text()
 
 
+def _resolve_manifest_audio_path(path: Path, *, surah: int) -> Path | None:
+    config = load_config()
+    candidates: list[Path] = []
+    if path:
+        if path.name:
+            candidates.append(config.husary_word_audio_dir / str(surah) / path.name)
+        if not path.is_absolute():
+            candidates.append(config.audio_dir / path)
+        candidates.append(path)
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        try:
+            normalized = candidate.expanduser()
+        except Exception:
+            continue
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        if normalized.exists():
+            return normalized.resolve()
+    return None
+
+
 def _served_audio_url(surah: int, ayah: int, word_index: int) -> str | None:
     config = load_config()
     preferred = config.served_word_audio_dir / str(surah) / str(ayah) / f"{word_index}.mp3"
@@ -47,8 +71,8 @@ def _served_audio_url(surah: int, ayah: int, word_index: int) -> str | None:
     for clip in clips:
         if int(clip.get("word_index", -1)) != word_index:
             continue
-        path = Path(str(clip.get("path", "")))
-        if not path.exists():
+        path = _resolve_manifest_audio_path(Path(str(clip.get("path", ""))), surah=surah)
+        if path is None:
             continue
         try:
             relative = path.resolve().relative_to(config.audio_dir.resolve())
