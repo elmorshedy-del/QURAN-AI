@@ -1,0 +1,81 @@
+{
+  "107:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/107001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم",
+      "ارايت",
+      "الذي",
+      "يكذب",
+      "بالدين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "107:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/107002.mp3",
+    "expected_words": [
+      "فذلك",
+      "الذي",
+      "يدع",
+      "اليتيم"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "107:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/107003.mp3",
+    "expected_words": [
+      "ولا",
+      "يحض",
+      "علي",
+      "طعام",
+      "المسكين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "107:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/107004.mp3",
+    "expected_words": [
+      "فويل",
+      "للمصلين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "107:5": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/107005.mp3",
+    "expected_words": [
+      "الذين",
+      "هم",
+      "عن",
+      "صلاتهم",
+      "ساهون"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "107:6": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/107006.mp3",
+    "expected_words": [
+      "الذين",
+      "هم",
+      "يراءون"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "107:7": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/107007.mp3",
+    "expected_words": [
+      "ويمنعون",
+      "الماعون"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}

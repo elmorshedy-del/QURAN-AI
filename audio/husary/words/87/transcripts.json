@@ -1,0 +1,213 @@
+{
+  "87:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم",
+      "سبح",
+      "اسم",
+      "ربك",
+      "الاعلي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087002.mp3",
+    "expected_words": [
+      "الذي",
+      "خلق",
+      "فسوي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087003.mp3",
+    "expected_words": [
+      "والذي",
+      "قدر",
+      "فهدي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087004.mp3",
+    "expected_words": [
+      "والذي",
+      "اخرج",
+      "المرعي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:5": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087005.mp3",
+    "expected_words": [
+      "فجعله",
+      "غثاء",
+      "احوي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:6": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087006.mp3",
+    "expected_words": [
+      "سنقريك",
+      "فلا",
+      "تنسي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:7": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087007.mp3",
+    "expected_words": [
+      "الا",
+      "ما",
+      "شاء",
+      "الله",
+      "انه",
+      "يعلم",
+      "الجهر",
+      "وما",
+      "يخفي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:8": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087008.mp3",
+    "expected_words": [
+      "ونيسرك",
+      "لليسري"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:9": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087009.mp3",
+    "expected_words": [
+      "فذكر",
+      "ان",
+      "نفعت",
+      "الذكري"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:10": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087010.mp3",
+    "expected_words": [
+      "سيذكر",
+      "من",
+      "يخشي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:11": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087011.mp3",
+    "expected_words": [
+      "ويتجنبها",
+      "الاشقي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:12": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087012.mp3",
+    "expected_words": [
+      "الذي",
+      "يصلي",
+      "النار",
+      "الكبري"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:13": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087013.mp3",
+    "expected_words": [
+      "ثم",
+      "لا",
+      "يموت",
+      "فيها",
+      "ولا",
+      "يحيي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:14": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087014.mp3",
+    "expected_words": [
+      "قد",
+      "افلح",
+      "من",
+      "تزكي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:15": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087015.mp3",
+    "expected_words": [
+      "وذكر",
+      "اسم",
+      "ربه",
+      "فصلي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:16": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087016.mp3",
+    "expected_words": [
+      "بل",
+      "توثرون",
+      "الحياه",
+      "الدنيا"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:17": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087017.mp3",
+    "expected_words": [
+      "والاخره",
+      "خير",
+      "وابقي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:18": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087018.mp3",
+    "expected_words": [
+      "ان",
+      "ه",
+      "ذا",
+      "لفي",
+      "الصحف",
+      "الاولي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "87:19": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/087019.mp3",
+    "expected_words": [
+      "صحف",
+      "ابراهيم",
+      "وموسي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}

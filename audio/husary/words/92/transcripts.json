@@ -1,0 +1,225 @@
+{
+  "92:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم",
+      "والليل",
+      "اذا",
+      "يغشي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092002.mp3",
+    "expected_words": [
+      "والنهار",
+      "اذا",
+      "تجلي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092003.mp3",
+    "expected_words": [
+      "وما",
+      "خلق",
+      "الذكر",
+      "والانثي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092004.mp3",
+    "expected_words": [
+      "ان",
+      "سعيكم",
+      "لشتي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:5": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092005.mp3",
+    "expected_words": [
+      "فاما",
+      "من",
+      "اعطي",
+      "واتقي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:6": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092006.mp3",
+    "expected_words": [
+      "وصدق",
+      "بالحسني"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:7": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092007.mp3",
+    "expected_words": [
+      "فسنيسره",
+      "لليسري"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:8": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092008.mp3",
+    "expected_words": [
+      "واما",
+      "من",
+      "بخل",
+      "واستغني"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:9": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092009.mp3",
+    "expected_words": [
+      "وكذب",
+      "بالحسني"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:10": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092010.mp3",
+    "expected_words": [
+      "فسنيسره",
+      "للعسري"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:11": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092011.mp3",
+    "expected_words": [
+      "وما",
+      "يغني",
+      "عنه",
+      "ماله",
+      "اذا",
+      "تردي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:12": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092012.mp3",
+    "expected_words": [
+      "ان",
+      "علينا",
+      "للهدي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:13": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092013.mp3",
+    "expected_words": [
+      "وان",
+      "لنا",
+      "للاخره",
+      "والاولي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:14": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092014.mp3",
+    "expected_words": [
+      "فانذرتكم",
+      "نارا",
+      "تلظي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:15": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092015.mp3",
+    "expected_words": [
+      "لا",
+      "يصلاها",
+      "الا",
+      "الاشقي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:16": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092016.mp3",
+    "expected_words": [
+      "الذي",
+      "كذب",
+      "وتولي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:17": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092017.mp3",
+    "expected_words": [
+      "وسيجنبها",
+      "الاتقي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:18": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092018.mp3",
+    "expected_words": [
+      "الذي",
+      "يوتي",
+      "ماله",
+      "يتزكي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:19": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092019.mp3",
+    "expected_words": [
+      "وما",
+      "لاحد",
+      "عنده",
+      "من",
+      "نعمه",
+      "تجزي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:20": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092020.mp3",
+    "expected_words": [
+      "الا",
+      "ابتغاء",
+      "وجه",
+      "ربه",
+      "الاعلي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "92:21": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/092021.mp3",
+    "expected_words": [
+      "ولسوف",
+      "يرضي"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}

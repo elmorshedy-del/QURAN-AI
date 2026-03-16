@@ -1,0 +1,82 @@
+{
+  "1:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/001001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "1:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/001002.mp3",
+    "expected_words": [
+      "الحمد",
+      "لله",
+      "رب",
+      "العالمين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "1:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/001003.mp3",
+    "expected_words": [
+      "الرحم",
+      "ن",
+      "الرحيم"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "1:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/001004.mp3",
+    "expected_words": [
+      "مالك",
+      "يوم",
+      "الدين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "1:5": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/001005.mp3",
+    "expected_words": [
+      "اياك",
+      "نعبد",
+      "واياك",
+      "نستعين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "1:6": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/001006.mp3",
+    "expected_words": [
+      "اهدنا",
+      "الصراط",
+      "المستقيم"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "1:7": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/001007.mp3",
+    "expected_words": [
+      "صراط",
+      "الذين",
+      "انعمت",
+      "عليهم",
+      "غير",
+      "المغضوب",
+      "عليهم",
+      "ولا",
+      "الضالين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}

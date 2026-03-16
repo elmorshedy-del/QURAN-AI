@@ -1,0 +1,91 @@
+{
+  "102:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/102001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم",
+      "الهاكم",
+      "التكاثر"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "102:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/102002.mp3",
+    "expected_words": [
+      "حتي",
+      "زرتم",
+      "المقابر"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "102:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/102003.mp3",
+    "expected_words": [
+      "كلا",
+      "سوف",
+      "تعلمون"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "102:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/102004.mp3",
+    "expected_words": [
+      "ثم",
+      "كلا",
+      "سوف",
+      "تعلمون"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "102:5": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/102005.mp3",
+    "expected_words": [
+      "كلا",
+      "لو",
+      "تعلمون",
+      "علم",
+      "اليقين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "102:6": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/102006.mp3",
+    "expected_words": [
+      "لترون",
+      "الجحيم"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "102:7": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/102007.mp3",
+    "expected_words": [
+      "ثم",
+      "لترونها",
+      "عين",
+      "اليقين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "102:8": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/102008.mp3",
+    "expected_words": [
+      "ثم",
+      "لتسالن",
+      "يوميذ",
+      "عن",
+      "النعيم"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}

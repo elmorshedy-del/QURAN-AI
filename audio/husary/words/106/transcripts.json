@@ -1,0 +1,53 @@
+{
+  "106:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/106001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم",
+      "لايلاف",
+      "قريش"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "106:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/106002.mp3",
+    "expected_words": [
+      "ايلافهم",
+      "رحله",
+      "الشتاء",
+      "والصيف"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "106:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/106003.mp3",
+    "expected_words": [
+      "فليعبدوا",
+      "رب",
+      "ه",
+      "ذا",
+      "البيت"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "106:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/106004.mp3",
+    "expected_words": [
+      "الذي",
+      "اطعمهم",
+      "من",
+      "جوع",
+      "وامنهم",
+      "من",
+      "خوف"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}

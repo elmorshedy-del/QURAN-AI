@@ -1,0 +1,159 @@
+{
+  "98:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/098001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم",
+      "لم",
+      "يكن",
+      "الذين",
+      "كفروا",
+      "من",
+      "اهل",
+      "الكتاب",
+      "والمشركين",
+      "منفكين",
+      "حتي",
+      "تاتيهم",
+      "البينه"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "98:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/098002.mp3",
+    "expected_words": [
+      "رسول",
+      "من",
+      "الله",
+      "يتلو",
+      "صحفا",
+      "مطهره"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "98:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/098003.mp3",
+    "expected_words": [
+      "فيها",
+      "كتب",
+      "قيمه"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "98:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/098004.mp3",
+    "expected_words": [
+      "وما",
+      "تفرق",
+      "الذين",
+      "اوتوا",
+      "الكتاب",
+      "الا",
+      "من",
+      "بعد",
+      "ما",
+      "جاءتهم",
+      "البينه"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "98:5": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/098005.mp3",
+    "expected_words": [
+      "وما",
+      "امروا",
+      "الا",
+      "ليعبدوا",
+      "الله",
+      "مخلصين",
+      "له",
+      "الدين",
+      "حنفاء",
+      "ويقيموا",
+      "الصلاه",
+      "ويوتوا",
+      "الزكاه",
+      "وذلك",
+      "دين",
+      "القيمه"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "98:6": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/098006.mp3",
+    "expected_words": [
+      "ان",
+      "الذين",
+      "كفروا",
+      "من",
+      "اهل",
+      "الكتاب",
+      "والمشركين",
+      "في",
+      "نار",
+      "جهنم",
+      "خالدين",
+      "فيها",
+      "اول",
+      "يك",
+      "هم",
+      "شر",
+      "البريه"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "98:7": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/098007.mp3",
+    "expected_words": [
+      "ان",
+      "الذين",
+      "امنوا",
+      "وعملوا",
+      "الصالحات",
+      "اول",
+      "يك",
+      "هم",
+      "خير",
+      "البريه"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "98:8": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/098008.mp3",
+    "expected_words": [
+      "جزاوهم",
+      "عند",
+      "ربهم",
+      "جنات",
+      "عدن",
+      "تجري",
+      "من",
+      "تحتها",
+      "الانهار",
+      "خالدين",
+      "فيها",
+      "ابدا",
+      "رضي",
+      "الله",
+      "عنهم",
+      "ورضوا",
+      "عنه",
+      "ذلك",
+      "لمن",
+      "خشي",
+      "ربه"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}

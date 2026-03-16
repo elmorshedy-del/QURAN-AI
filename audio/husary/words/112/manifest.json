@@ -1,0 +1,210 @@
+{
+  "112:1": [
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_001_00_بسم.wav",
+      "word_index": 0,
+      "word": "بسم",
+      "observed_word": "",
+      "start": 0.0,
+      "end": 0.5825,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_001_01_الله.wav",
+      "word_index": 1,
+      "word": "الله",
+      "observed_word": "",
+      "start": 0.5825,
+      "end": 1.3591666666666669,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_001_02_الرحم.wav",
+      "word_index": 2,
+      "word": "الرحم",
+      "observed_word": "",
+      "start": 1.3591666666666669,
+      "end": 2.33,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_001_03_ن.wav",
+      "word_index": 3,
+      "word": "ن",
+      "observed_word": "",
+      "start": 2.33,
+      "end": 2.524166666666667,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_001_04_الرحيم.wav",
+      "word_index": 4,
+      "word": "الرحيم",
+      "observed_word": "",
+      "start": 2.524166666666667,
+      "end": 3.689166666666667,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_001_05_قل.wav",
+      "word_index": 5,
+      "word": "قل",
+      "observed_word": "",
+      "start": 3.689166666666667,
+      "end": 4.077500000000001,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_001_06_هو.wav",
+      "word_index": 6,
+      "word": "هو",
+      "observed_word": "",
+      "start": 4.077500000000001,
+      "end": 4.465833333333334,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_001_07_الله.wav",
+      "word_index": 7,
+      "word": "الله",
+      "observed_word": "",
+      "start": 4.465833333333334,
+      "end": 5.242500000000001,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_001_08_احد.wav",
+      "word_index": 8,
+      "word": "احد",
+      "observed_word": "",
+      "start": 5.242500000000001,
+      "end": 5.825,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    }
+  ],
+  "112:2": [
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_002_00_الله.wav",
+      "word_index": 0,
+      "word": "الله",
+      "observed_word": "",
+      "start": 0.0,
+      "end": 2.2408888888888887,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_002_01_الصمد.wav",
+      "word_index": 1,
+      "word": "الصمد",
+      "observed_word": "",
+      "start": 2.2408888888888887,
+      "end": 5.042,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    }
+  ],
+  "112:3": [
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_003_00_لم.wav",
+      "word_index": 0,
+      "word": "لم",
+      "observed_word": "",
+      "start": 0.0,
+      "end": 0.9883333333333333,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_003_01_يلد.wav",
+      "word_index": 1,
+      "word": "يلد",
+      "observed_word": "",
+      "start": 0.9883333333333333,
+      "end": 2.470833333333333,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_003_02_ولم.wav",
+      "word_index": 2,
+      "word": "ولم",
+      "observed_word": "",
+      "start": 2.470833333333333,
+      "end": 3.953333333333333,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_003_03_يولد.wav",
+      "word_index": 3,
+      "word": "يولد",
+      "observed_word": "",
+      "start": 3.953333333333333,
+      "end": 5.93,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    }
+  ],
+  "112:4": [
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_004_00_ولم.wav",
+      "word_index": 0,
+      "word": "ولم",
+      "observed_word": "",
+      "start": 0.0,
+      "end": 1.6248000000000002,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_004_01_يكن.wav",
+      "word_index": 1,
+      "word": "يكن",
+      "observed_word": "",
+      "start": 1.6248000000000002,
+      "end": 3.2496000000000005,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_004_02_له.wav",
+      "word_index": 2,
+      "word": "له",
+      "observed_word": "",
+      "start": 3.2496000000000005,
+      "end": 4.332800000000001,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_004_03_كفوا.wav",
+      "word_index": 3,
+      "word": "كفوا",
+      "observed_word": "",
+      "start": 4.332800000000001,
+      "end": 6.499200000000001,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    },
+    {
+      "path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/words/112/112_004_04_احد.wav",
+      "word_index": 4,
+      "word": "احد",
+      "observed_word": "",
+      "start": 6.499200000000001,
+      "end": 8.124,
+      "confidence": 0.0,
+      "alignment_method": "duration-fallback"
+    }
+  ]
+}
