@@ -1,0 +1,72 @@
+{
+  "97:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/097001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم",
+      "انا",
+      "انزلناه",
+      "في",
+      "ليله",
+      "القدر"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "97:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/097002.mp3",
+    "expected_words": [
+      "وما",
+      "ادراك",
+      "ما",
+      "ليله",
+      "القدر"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "97:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/097003.mp3",
+    "expected_words": [
+      "ليله",
+      "القدر",
+      "خير",
+      "من",
+      "الف",
+      "شهر"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "97:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/097004.mp3",
+    "expected_words": [
+      "تنزل",
+      "الملايكه",
+      "والروح",
+      "فيها",
+      "باذن",
+      "ربهم",
+      "من",
+      "كل",
+      "امر"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "97:5": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/097005.mp3",
+    "expected_words": [
+      "سلام",
+      "هي",
+      "حتي",
+      "مطلع",
+      "الفجر"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}

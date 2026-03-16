@@ -1,0 +1,65 @@
+{
+  "105:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/105001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم",
+      "الم",
+      "تر",
+      "كيف",
+      "فعل",
+      "ربك",
+      "باصحاب",
+      "الفيل"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "105:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/105002.mp3",
+    "expected_words": [
+      "الم",
+      "يجعل",
+      "كيدهم",
+      "في",
+      "تضليل"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "105:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/105003.mp3",
+    "expected_words": [
+      "وارسل",
+      "عليهم",
+      "طيرا",
+      "ابابيل"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "105:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/105004.mp3",
+    "expected_words": [
+      "ترميهم",
+      "بحجاره",
+      "من",
+      "سجيل"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "105:5": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/105005.mp3",
+    "expected_words": [
+      "فجعلهم",
+      "كعصف",
+      "ماكول"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}

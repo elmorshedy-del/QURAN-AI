@@ -1,0 +1,76 @@
+{
+  "109:1": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/109001.mp3",
+    "expected_words": [
+      "بسم",
+      "الله",
+      "الرحم",
+      "ن",
+      "الرحيم",
+      "قل",
+      "يا",
+      "ايها",
+      "الكافرون"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "109:2": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/109002.mp3",
+    "expected_words": [
+      "لا",
+      "اعبد",
+      "ما",
+      "تعبدون"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "109:3": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/109003.mp3",
+    "expected_words": [
+      "ولا",
+      "انتم",
+      "عابدون",
+      "ما",
+      "اعبد"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "109:4": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/109004.mp3",
+    "expected_words": [
+      "ولا",
+      "انا",
+      "عابد",
+      "ما",
+      "عبدتم"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "109:5": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/109005.mp3",
+    "expected_words": [
+      "ولا",
+      "انتم",
+      "عابدون",
+      "ما",
+      "اعبد"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  },
+  "109:6": {
+    "audio_path": "/Users/ahmedelmorshedy/Downloads/dashboard-full/virona-shawq-dashboard/apps/tajweed-ml/audio/husary/raw/109006.mp3",
+    "expected_words": [
+      "لكم",
+      "دينكم",
+      "ولي",
+      "دين"
+    ],
+    "transcript_words": [],
+    "alignment_method": "duration-fallback"
+  }
+}
