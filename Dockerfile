@@ -18,7 +18,9 @@ COPY data/ data/
 COPY audio/ audio/
 COPY cli.py .
 
-RUN python ml/setup.py
+# The live API uses Muaalem at runtime. Segmenter and dataset bootstrap are
+# heavier setup paths and are not required to boot the Cloud Run service.
+RUN python -c "from ml.setup import setup_muaalem; setup_muaalem()"
 
 EXPOSE 8000
 
