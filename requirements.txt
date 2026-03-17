@@ -6,8 +6,9 @@ torchaudio>=2.7.0
 transformers>=4.55.0,<6
 datasets>=2.19.0
 numpy>=2.2.6
-scipy==1.13.0
-librosa==0.10.2
+scipy
+librosa
+numba>=0.61.2
 soundfile==0.12.1
 python-multipart==0.0.9
 pydantic>=2.8.0
