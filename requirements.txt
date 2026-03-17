@@ -18,3 +18,4 @@ diff-match-patch
 rich
 quran-muaalem
 quran-transcript
+
