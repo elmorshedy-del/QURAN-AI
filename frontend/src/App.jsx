@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { fetchAyah, fetchHealth, getApiBase } from "./api";
 import { useRecitation } from "./hooks/useRecitation";
