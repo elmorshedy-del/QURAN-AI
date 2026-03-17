@@ -17,7 +17,7 @@ if str(APP_ROOT) not in sys.path:
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from server.muaalem_checker import MuaalemChecker
+from server.muaalem_checker import MuaalemChecker, TajweedError, error_key
 from tajweed_ml.config import load_config
 from tajweed_ml.quran_text import load_quran_text
 
@@ -28,6 +28,18 @@ quran_data: dict[str, list[str]] = {}
 
 def load_quran_data() -> dict[str, list[str]]:
     return load_quran_text()
+
+
+def _serialize_error(error: TajweedError) -> dict[str, object]:
+    return {
+        "word_index": error.word_index,
+        "error_type": error.error_type,
+        "rule": error.rule,
+        "description": error.description_en,
+        "severity": error.severity,
+        "expected": error.expected_phoneme,
+        "predicted": error.predicted_phoneme,
+    }
 
 
 def _resolve_manifest_audio_path(path: Path, *, surah: int) -> Path | None:
@@ -109,6 +121,7 @@ async def recite_ws(websocket: WebSocket):
     current_ayah = 1
     current_word = 0
     is_active = False
+    reported_error_keys: set[tuple[int, str, str, str, str]] = set()
 
     try:
         while True:
@@ -123,6 +136,7 @@ async def recite_ws(websocket: WebSocket):
                     current_word = 0
                     audio_buffer = np.array([], dtype=np.float32)
                     is_active = True
+                    reported_error_keys.clear()
                     words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                     await websocket.send_json(
                         {
@@ -160,18 +174,7 @@ async def recite_ws(websocket: WebSocket):
                                 "type": "summary",
                                 "score": score,
                                 "total_errors": error_count,
-                                "errors": [
-                                    {
-                                        "word_index": error.word_index,
-                                        "error_type": error.error_type,
-                                        "rule": error.rule,
-                                        "description": error.description_en,
-                                        "severity": error.severity,
-                                        "expected": error.expected_phoneme,
-                                        "predicted": error.predicted_phoneme,
-                                    }
-                                    for error in errors
-                                ],
+                                "errors": [_serialize_error(error) for error in errors],
                             }
                         )
                     else:
@@ -184,10 +187,12 @@ async def recite_ws(websocket: WebSocket):
                             }
                         )
                     audio_buffer = np.array([], dtype=np.float32)
+                    reported_error_keys.clear()
                 elif message["type"] == "next_ayah":
                     current_ayah += 1
                     current_word = 0
                     audio_buffer = np.array([], dtype=np.float32)
+                    reported_error_keys.clear()
                     words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                     await websocket.send_json(
                         {
@@ -214,20 +219,26 @@ async def recite_ws(websocket: WebSocket):
                     ayah=current_ayah,
                 )
                 if errors:
-                    top_error = errors[0]
-                    word_index = top_error.word_index
-                    await websocket.send_json(
-                        {
-                            "type": "correction",
-                            "word_index": word_index,
-                            "word_ar": words[word_index] if word_index < len(words) else "",
-                            "error_type": top_error.error_type,
-                            "rule": top_error.rule,
-                            "description": top_error.description_en,
-                            "severity": top_error.severity,
-                            "audio_url": _served_audio_url(current_surah, current_ayah, word_index),
-                        }
+                    next_error = next(
+                        (error for error in errors if error_key(error) not in reported_error_keys),
+                        None,
                     )
+                    if next_error is not None:
+                        word_index = next_error.word_index
+                        reported_error_keys.add(error_key(next_error))
+                        current_word = max(current_word, word_index)
+                        await websocket.send_json(
+                            {
+                                "type": "correction",
+                                "word_index": word_index,
+                                "word_ar": words[word_index] if word_index < len(words) else "",
+                                "error_type": next_error.error_type,
+                                "rule": next_error.rule,
+                                "description": next_error.description_en,
+                                "severity": next_error.severity,
+                                "audio_url": _served_audio_url(current_surah, current_ayah, word_index),
+                            }
+                        )
                 else:
                     await websocket.send_json({"type": "correct", "word_index": current_word})
                     current_word += 1

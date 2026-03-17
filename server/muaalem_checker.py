@@ -32,6 +32,28 @@ class TajweedError:
     confidence: float
 
 
+def error_key(error: TajweedError) -> tuple[int, str, str, str, str]:
+    return (
+        int(error.word_index),
+        str(error.error_type),
+        str(error.rule),
+        str(error.expected_phoneme),
+        str(error.predicted_phoneme),
+    )
+
+
+def dedupe_errors(errors: list[TajweedError]) -> list[TajweedError]:
+    unique: list[TajweedError] = []
+    seen: set[tuple[int, str, str, str, str]] = set()
+    for error in errors:
+        key = error_key(error)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(error)
+    return unique
+
+
 def _severity_for_error(error_type: str) -> str:
     if error_type in {"makhraj", "tafkheem", "missing"}:
         return "high"
@@ -382,7 +404,7 @@ class MuaalemChecker:
                     confidence=0.95,
                 )
             )
-        return results
+        return dedupe_errors(results)
 
     def check_file(self, audio_path: str | Path, expected_words: list[str]) -> list[TajweedError]:
         waveform, sample_rate = load_audio(audio_path)
