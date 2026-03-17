@@ -97,7 +97,6 @@ def test_websocket_dedupes_summary_errors(monkeypatch) -> None:
             websocket.send_json({"type": "start", "surah": 1, "ayah": 1})
             websocket.receive_json()
             websocket.send_bytes(payload)
-            websocket.receive_json()
             websocket.send_json({"type": "stop"})
             summary = websocket.receive_json()
 
@@ -139,7 +138,9 @@ def test_websocket_rotates_to_unseen_corrections(monkeypatch) -> None:
     monkeypatch.setattr(main, "MuaalemChecker", lambda device="cpu": RotatingChecker())
     monkeypatch.setattr(main, "load_quran_data", lambda: {"1:1": ["بِسْمِ", "ٱللَّهِ"]})
 
-    payload = np.zeros(32_000, dtype=np.int16).tobytes()
+    speech = np.full(24_000, 1000, dtype=np.int16)
+    silence = np.zeros(8_000, dtype=np.int16)
+    payload = np.concatenate([speech, silence]).tobytes()
 
     with TestClient(api.app) as client:
         with client.websocket_connect("/ws/recite") as websocket:
