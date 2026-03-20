@@ -1,4 +1,5 @@
 const DEFAULT_LOCAL_API = "http://localhost:8000";
+const DEFAULT_LOCAL_SEGMENTER = "http://localhost:8001";
 
 function normalizeBase(rawValue) {
   const value = String(rawValue || "").trim();
@@ -23,6 +24,21 @@ export function getApiBase() {
   return `${protocol}//${hostname}:8000`;
 }
 
+export function getSegmenterBase() {
+  const configured = normalizeBase(import.meta.env.VITE_SEGMENTER_BASE);
+  if (configured) {
+    return configured;
+  }
+  if (typeof window === "undefined") {
+    return DEFAULT_LOCAL_SEGMENTER;
+  }
+  const { protocol, hostname, port } = window.location;
+  if (port === "8001") {
+    return `${protocol}//${hostname}:${port}`;
+  }
+  return `${protocol}//${hostname}:8001`;
+}
+
 async function readJson(response) {
   if (!response.ok) {
     const text = await response.text();
@@ -38,5 +54,10 @@ export async function fetchHealth() {
 
 export async function fetchAyah(surah, ayah) {
   const response = await fetch(`${getApiBase()}/api/surah/${surah}/ayah/${ayah}`);
+  return readJson(response);
+}
+
+export async function fetchSegmenterHealth() {
+  const response = await fetch(`${getSegmenterBase()}/api/health`);
   return readJson(response);
 }

@@ -9,7 +9,9 @@ from .audio import load_audio
 from .checker import check_ghunnah, check_madd, load_checker
 from .config import load_config
 from .optional import MissingDependencyError, dependency_report
+from .quran_text import load_quran_text
 from .schemas import RuleAnnotation, RuleKind
+from .segmenter import download_segmenter_model, load_segmenter
 
 app = typer.Typer(help="Al-Tarteel Muaalem-based CLI")
 
@@ -39,6 +41,36 @@ def doctor() -> None:
             "checker": checker.doctor_report(),
         }
     )
+
+
+@app.command("setup-segmenter")
+def setup_segmenter_command(
+    cache_dir: Path | None = typer.Option(None, file_okay=False, dir_okay=True, writable=True),
+) -> None:
+    payload = _run_or_exit(download_segmenter_model, cache_dir)
+    _echo_json(payload)
+
+
+@app.command("segment-audio")
+def segment_audio_command(
+    audio_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False),
+    surah: int | None = typer.Option(None, min=1),
+    ayah: int | None = typer.Option(None, min=1),
+    chunk_length_s: float = typer.Option(15.0, min=1.0),
+    stride_length_s: float = typer.Option(2.0, min=0.0),
+    device: str = typer.Option(load_config().default_device),
+) -> None:
+    quran_data = load_quran_text()
+    expected_words = quran_data.get(f"{surah}:{ayah}") if surah is not None and ayah is not None else None
+    segmenter = _run_or_exit(load_segmenter, device)
+    payload = _run_or_exit(
+        segmenter.segment_audio,
+        str(audio_path),
+        transcript_words=expected_words,
+        chunk_length_s=chunk_length_s,
+        stride_length_s=stride_length_s,
+    )
+    _echo_json(payload)
 
 
 @app.command("test-madd")

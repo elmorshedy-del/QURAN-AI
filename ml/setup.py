@@ -7,7 +7,6 @@ from pathlib import Path
 
 from datasets import load_dataset
 from huggingface_hub import snapshot_download
-from transformers import AutoModelForCTC, AutoProcessor
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = APP_ROOT / "src"
@@ -19,6 +18,7 @@ if str(SRC_ROOT) not in sys.path:
 from tajweed_ml.config import load_config
 from tajweed_ml.dataset_downloads import build_word_audio_index
 from tajweed_ml.optional import require_dependency
+from tajweed_ml.segmenter import download_segmenter_model
 from tajweed_ml.vendor_runtime import load_muaalem_vendor
 
 
@@ -46,26 +46,10 @@ def setup_muaalem(cache_dir: str | Path | None = None):
 
 
 def setup_segmenter(cache_dir: str | Path | None = None):
-    config = load_config()
-    resolved_cache_dir = Path(cache_dir) if cache_dir is not None else config.segmenter_model_dir
-    resolved_cache_dir.mkdir(parents=True, exist_ok=True)
-
     print("Downloading recitation segmenter v2 (~1.2GB)...")
-    snapshot_download(
-        repo_id=config.segmenter_model_name,
-        local_dir=str(resolved_cache_dir),
-        resume_download=True,
-    )
-    processor = AutoProcessor.from_pretrained(
-        str(resolved_cache_dir),
-        trust_remote_code=True,
-    )
-    model = AutoModelForCTC.from_pretrained(
-        str(resolved_cache_dir),
-        trust_remote_code=True,
-    )
+    payload = download_segmenter_model(cache_dir)
     print("Segmenter model ready")
-    return processor, model
+    return payload
 
 
 def _export_buraaq_audio_tree(index: dict[str, dict[str, object]], destination_root: Path) -> int:
@@ -109,6 +93,26 @@ def setup_word_audio(cache_dir: str | Path | None = None):
 
 def setup_quran_text():
     print("Quran text available via Buraaq dataset (word_ar field)")
+
+
+def setup_runtime_models(preload_segmenter: bool | None = None):
+    should_preload_muaalem = os.getenv("TAJWEED_ML_PRELOAD_MUAALEM", "").strip().lower()
+    if should_preload_muaalem in {"0", "false", "no", "off"}:
+        print("Skipping Muaalem preload (TAJWEED_ML_PRELOAD_MUAALEM disables it)")
+    else:
+        setup_muaalem()
+    should_preload_segmenter = preload_segmenter
+    if should_preload_segmenter is None:
+        should_preload_segmenter = os.getenv("TAJWEED_ML_PRELOAD_SEGMENTER", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+    if should_preload_segmenter:
+        setup_segmenter()
+    else:
+        print("Skipping segmenter preload (set TAJWEED_ML_PRELOAD_SEGMENTER=1 to include it)")
 
 
 def verify_setup():

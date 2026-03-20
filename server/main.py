@@ -17,91 +17,17 @@ if str(APP_ROOT) not in sys.path:
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from server.muaalem_checker import MuaalemChecker, TajweedError
+from server.muaalem_checker import MuaalemChecker
 from tajweed_ml.config import load_config
 from tajweed_ml.quran_text import load_quran_text
 
 
 checker: MuaalemChecker | None = None
 quran_data: dict[str, list[str]] = {}
-FRAME_SECONDS = 0.02
-FRAME_HOP_SECONDS = 0.01
-MIN_COMMIT_SECONDS = 1.0
-TRAILING_SILENCE_SECONDS = 0.28
-FORCED_COMMIT_SECONDS = 4.0
-OVERLAP_SECONDS = 0.5
-WORDS_PER_SECOND = 1.25
-MAX_SEGMENT_WORDS = 5
 
 
 def load_quran_data() -> dict[str, list[str]]:
     return load_quran_text()
-
-
-def _serialize_error(error: TajweedError) -> dict[str, object]:
-    return {
-        "word_index": error.word_index,
-        "error_type": error.error_type,
-        "rule": error.rule,
-        "description": error.description_en,
-        "severity": error.severity,
-        "expected": error.expected_phoneme,
-        "predicted": error.predicted_phoneme,
-    }
-
-
-def _find_commit_index(audio: np.ndarray, sample_rate: int) -> int | None:
-    if len(audio) < int(MIN_COMMIT_SECONDS * sample_rate):
-        return None
-
-    frame = max(1, int(FRAME_SECONDS * sample_rate))
-    hop = max(1, int(FRAME_HOP_SECONDS * sample_rate))
-    limit = len(audio) - frame + 1
-    if limit <= 0:
-        return None
-
-    energy = np.array(
-        [float(np.sqrt(np.mean(np.square(audio[index : index + frame])))) for index in range(0, limit, hop)],
-        dtype=np.float32,
-    )
-    peak = float(energy.max(initial=0.0))
-    if peak <= 1e-6:
-        return None
-
-    voiced = energy >= (peak * 0.18)
-    if not np.any(voiced):
-        return None
-
-    last_voiced_frame = int(np.flatnonzero(voiced)[-1])
-    trailing_silence = ((len(voiced) - 1 - last_voiced_frame) * hop) / sample_rate
-
-    if trailing_silence >= TRAILING_SILENCE_SECONDS:
-        commit_index = min(len(audio), last_voiced_frame * hop + frame)
-        return commit_index if commit_index >= int(MIN_COMMIT_SECONDS * sample_rate) else None
-
-    forced_commit = len(audio) >= int(FORCED_COMMIT_SECONDS * sample_rate)
-    if not forced_commit:
-        return None
-
-    overlap = int(OVERLAP_SECONDS * sample_rate)
-    commit_index = max(int(MIN_COMMIT_SECONDS * sample_rate), len(audio) - overlap)
-    return commit_index if commit_index < len(audio) else None
-
-
-def _estimate_segment_word_count(total_words: int, samples: int, sample_rate: int) -> int:
-    duration_seconds = samples / max(1, sample_rate)
-    estimated = max(1, int(round(duration_seconds * WORDS_PER_SECOND)))
-    return min(total_words, max(1, min(MAX_SEGMENT_WORDS, estimated)))
-
-
-def _live_error_key(error: TajweedError, word_offset: int) -> tuple[int, str, str, str, str]:
-    return (
-        word_offset + int(error.word_index),
-        str(error.error_type),
-        str(error.rule),
-        str(error.expected_phoneme),
-        str(error.predicted_phoneme),
-    )
 
 
 def _resolve_manifest_audio_path(path: Path, *, surah: int) -> Path | None:
@@ -179,13 +105,10 @@ app.mount("/audio", StaticFiles(directory=str(load_config().audio_dir)), name="a
 async def recite_ws(websocket: WebSocket):
     await websocket.accept()
     audio_buffer = np.array([], dtype=np.float32)
-    session_audio = np.array([], dtype=np.float32)
     current_surah = 1
     current_ayah = 1
     current_word = 0
     is_active = False
-    reported_error_keys: set[tuple[int, str, str, str, str]] = set()
-    sample_rate = load_config().sample_rate
 
     try:
         while True:
@@ -199,9 +122,7 @@ async def recite_ws(websocket: WebSocket):
                     current_ayah = int(message.get("ayah", 1))
                     current_word = 0
                     audio_buffer = np.array([], dtype=np.float32)
-                    session_audio = np.array([], dtype=np.float32)
                     is_active = True
-                    reported_error_keys.clear()
                     words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                     await websocket.send_json(
                         {
@@ -215,9 +136,9 @@ async def recite_ws(websocket: WebSocket):
                 elif message["type"] == "stop":
                     is_active = False
                     words = quran_data.get(f"{current_surah}:{current_ayah}", [])
-                    if len(session_audio) > 0 and checker is not None and words:
+                    if len(audio_buffer) > 0 and checker is not None and words:
                         errors = checker.check(
-                            session_audio,
+                            audio_buffer,
                             words,
                             surah=current_surah,
                             ayah=current_ayah,
@@ -239,7 +160,18 @@ async def recite_ws(websocket: WebSocket):
                                 "type": "summary",
                                 "score": score,
                                 "total_errors": error_count,
-                                "errors": [_serialize_error(error) for error in errors],
+                                "errors": [
+                                    {
+                                        "word_index": error.word_index,
+                                        "error_type": error.error_type,
+                                        "rule": error.rule,
+                                        "description": error.description_en,
+                                        "severity": error.severity,
+                                        "expected": error.expected_phoneme,
+                                        "predicted": error.predicted_phoneme,
+                                    }
+                                    for error in errors
+                                ],
                             }
                         )
                     else:
@@ -252,14 +184,10 @@ async def recite_ws(websocket: WebSocket):
                             }
                         )
                     audio_buffer = np.array([], dtype=np.float32)
-                    session_audio = np.array([], dtype=np.float32)
-                    reported_error_keys.clear()
                 elif message["type"] == "next_ayah":
                     current_ayah += 1
                     current_word = 0
                     audio_buffer = np.array([], dtype=np.float32)
-                    session_audio = np.array([], dtype=np.float32)
-                    reported_error_keys.clear()
                     words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                     await websocket.send_json(
                         {
@@ -273,68 +201,38 @@ async def recite_ws(websocket: WebSocket):
             elif "bytes" in data and is_active and checker is not None:
                 chunk = np.frombuffer(data["bytes"], dtype=np.int16).astype(np.float32) / 32768.0
                 audio_buffer = np.concatenate([audio_buffer, chunk])
-                session_audio = np.concatenate([session_audio, chunk])
-                buffer_duration = len(audio_buffer) / sample_rate
+                buffer_duration = len(audio_buffer) / load_config().sample_rate
                 if buffer_duration < 2.0:
                     continue
                 words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                 if not words:
                     continue
-                commit_index = _find_commit_index(audio_buffer, sample_rate)
-                if commit_index is None:
-                    continue
-
-                if current_word >= len(words):
-                    overlap = int(OVERLAP_SECONDS * sample_rate)
-                    audio_buffer = audio_buffer[max(0, commit_index - overlap) :]
-                    continue
-
-                segment_audio = audio_buffer[:commit_index]
-                remaining_words = words[current_word:]
-                segment_word_count = _estimate_segment_word_count(
-                    len(remaining_words),
-                    len(segment_audio),
-                    sample_rate,
-                )
-                segment_words = remaining_words[:segment_word_count]
                 errors = checker.check(
-                    segment_audio,
-                    segment_words,
+                    audio_buffer,
+                    words,
                     surah=current_surah,
                     ayah=current_ayah,
-                    use_ayah_context=False,
                 )
-
                 if errors:
-                    next_error = next(
-                        (
-                            error
-                            for error in errors
-                            if _live_error_key(error, current_word) not in reported_error_keys
-                        ),
-                        None,
+                    top_error = errors[0]
+                    word_index = top_error.word_index
+                    await websocket.send_json(
+                        {
+                            "type": "correction",
+                            "word_index": word_index,
+                            "word_ar": words[word_index] if word_index < len(words) else "",
+                            "error_type": top_error.error_type,
+                            "rule": top_error.rule,
+                            "description": top_error.description_en,
+                            "severity": top_error.severity,
+                            "audio_url": _served_audio_url(current_surah, current_ayah, word_index),
+                        }
                     )
-                    if next_error is not None:
-                        word_index = min(len(words) - 1, current_word + next_error.word_index)
-                        reported_error_keys.add(_live_error_key(next_error, current_word))
-                        await websocket.send_json(
-                            {
-                                "type": "correction",
-                                "word_index": word_index,
-                                "word_ar": words[word_index] if word_index < len(words) else "",
-                                "error_type": next_error.error_type,
-                                "rule": next_error.rule,
-                                "description": next_error.description_en,
-                                "severity": next_error.severity,
-                                "audio_url": _served_audio_url(current_surah, current_ayah, word_index),
-                            }
-                        )
                 else:
                     await websocket.send_json({"type": "correct", "word_index": current_word})
-
-                current_word = min(len(words), current_word + segment_word_count)
-                overlap = int(OVERLAP_SECONDS * sample_rate)
-                audio_buffer = audio_buffer[max(0, commit_index - overlap) :]
+                    current_word += 1
+                overlap = int(0.5 * load_config().sample_rate)
+                audio_buffer = audio_buffer[-overlap:]
     except WebSocketDisconnect:
         return
 

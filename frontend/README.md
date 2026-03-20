@@ -8,8 +8,10 @@ Set these variables in Railway:
 
 - `VITE_API_BASE=https://your-cloud-run-backend.run.app`
 - `VITE_WS_BASE=wss://your-cloud-run-backend.run.app`
+- `VITE_SEGMENTER_BASE=https://your-cloud-run-segmenter.run.app`
 
 `VITE_WS_BASE` is optional if it matches `VITE_API_BASE` with `ws://` or `wss://`.
+`VITE_SEGMENTER_BASE` is recommended so the UI can verify the dedicated segmenter service after deploy.
 
 ## Local development
 

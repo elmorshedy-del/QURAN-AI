@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { fetchAyah, fetchHealth, getApiBase } from "./api";
+import { fetchAyah, fetchHealth, fetchSegmenterHealth, getApiBase, getSegmenterBase } from "./api";
 import { useRecitation } from "./hooks/useRecitation";
 
 const SURAHS = [
@@ -114,7 +114,9 @@ export default function App() {
   const [ayahPayload, setAyahPayload] = useState({ words: [], word_audio_urls: [] });
   const [loadingAyah, setLoadingAyah] = useState(true);
   const [backendHealth, setBackendHealth] = useState(null);
+  const [segmenterHealth, setSegmenterHealth] = useState(null);
   const [backendError, setBackendError] = useState("");
+  const [segmenterError, setSegmenterError] = useState("");
   const [sessionState, setSessionState] = useState({ status: "idle" });
   const [latestCorrection, setLatestCorrection] = useState(null);
   const [latestSummary, setLatestSummary] = useState(null);
@@ -122,6 +124,7 @@ export default function App() {
   const [progress, setProgress] = useState(loadStoredProgress);
 
   const apiBase = getApiBase();
+  const segmenterBase = getSegmenterBase();
 
   useEffect(() => {
     persistProgress(progress);
@@ -143,6 +146,27 @@ export default function App() {
       }
     }
     loadHealth();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSegmenterHealth() {
+      try {
+        const payload = await fetchSegmenterHealth();
+        if (!cancelled) {
+          setSegmenterHealth(payload);
+          setSegmenterError("");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSegmenterError(String(error.message || error));
+        }
+      }
+    }
+    loadSegmenterHealth();
     return () => {
       cancelled = true;
     };
@@ -313,14 +337,24 @@ export default function App() {
                 <p>{backendHealth?.model || backendError || "Waiting for health check response."}</p>
               </div>
               <div className="status-card">
+                <span className="status-label">Segmenter</span>
+                <strong>{segmenterHealth?.status === "ok" ? "Connected" : "Checking"}</strong>
+                <p>
+                  {segmenterHealth?.service === "segmenter"
+                    ? "Dedicated Cloud Run segmenter service is ready."
+                    : segmenterError || "Waiting for segmenter health check response."}
+                </p>
+              </div>
+              <div className="status-card">
                 <span className="status-label">Deployment split</span>
                 <strong>Railway + Cloud Run</strong>
-                <p>Frontend can stay static on Railway while the recitation engine runs on Cloud Run GPU.</p>
+                <p>Frontend stays on Railway while backend and segmenter run as separate Cloud Run GPU services.</p>
               </div>
               <div className="status-card">
                 <span className="status-label">Live endpoint</span>
                 <strong>{apiBase}</strong>
-                <p>Set `VITE_API_BASE` and optionally `VITE_WS_BASE` for production.</p>
+                <p>Set backend, websocket, and segmenter URLs in Railway for production deployment.</p>
+                <small>{segmenterBase}</small>
               </div>
             </aside>
           </section>

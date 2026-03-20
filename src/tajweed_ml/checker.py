@@ -9,6 +9,7 @@ from .config import load_config
 from .dataset_downloads import load_word_audio_index
 from .quran_text import load_quran_text
 from .schemas import CheckResult, RuleAnnotation, RuleKind, TajweedCheckResult
+from .segmenter import segmenter_status
 from .sifaat_checker import check_ghunnah, check_madd, check_qalqalah_burst
 
 
@@ -54,6 +55,7 @@ class AppChecker:
             "device": self.device,
             "config": self.config.as_dict(),
             "muaalem": self.muaalem.report(),
+            "segmenter": segmenter_status(self.device),
             "muaalem_cached": self.config.muaalem_model_dir.exists(),
             "segmenter_cached": self.config.segmenter_model_dir.exists(),
             "buraaq_word_index_exists": self.config.buraaq_word_index_path.exists(),

@@ -32,28 +32,6 @@ class TajweedError:
     confidence: float
 
 
-def error_key(error: TajweedError) -> tuple[int, str, str, str, str]:
-    return (
-        int(error.word_index),
-        str(error.error_type),
-        str(error.rule),
-        str(error.expected_phoneme),
-        str(error.predicted_phoneme),
-    )
-
-
-def dedupe_errors(errors: list[TajweedError]) -> list[TajweedError]:
-    unique: list[TajweedError] = []
-    seen: set[tuple[int, str, str, str, str]] = set()
-    for error in errors:
-        key = error_key(error)
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(error)
-    return unique
-
-
 def _severity_for_error(error_type: str) -> str:
     if error_type in {"makhraj", "tafkheem", "missing"}:
         return "high"
@@ -181,17 +159,10 @@ class MuaalemChecker:
             "quran_transcript_repo_dir": str(self.config.quran_transcript_repo_dir),
         }
 
-    def _reference_text(
-        self,
-        words: list[str],
-        surah: int | None = None,
-        ayah: int | None = None,
-        *,
-        use_ayah_context: bool = True,
-    ) -> str:
+    def _reference_text(self, words: list[str], surah: int | None = None, ayah: int | None = None) -> str:
         if len(words) == 1:
             return words[0]
-        if use_ayah_context and surah is not None and ayah is not None:
+        if surah is not None and ayah is not None:
             try:
                 return str(self.Aya(surah, ayah).get().uthmani)
             except Exception:
@@ -204,14 +175,8 @@ class MuaalemChecker:
         *,
         surah: int | None = None,
         ayah: int | None = None,
-        use_ayah_context: bool = True,
     ):
-        reference_text = self._reference_text(
-            words,
-            surah=surah,
-            ayah=ayah,
-            use_ayah_context=use_ayah_context,
-        )
+        reference_text = self._reference_text(words, surah=surah, ayah=ayah)
         return reference_text, self.quran_phonetizer(reference_text, self.moshaf, remove_spaces=True)
 
     def _tokenizer_fallback(self, words: list[str]) -> list[str]:
@@ -259,15 +224,9 @@ class MuaalemChecker:
         sr: int = 16_000,
         surah: int | None = None,
         ayah: int | None = None,
-        use_ayah_context: bool = True,
     ) -> list[str]:
         audio_array = np.asarray(audio, dtype=np.float32).reshape(-1)
-        _, reference_script = self._reference_script(
-            expected_words,
-            surah=surah,
-            ayah=ayah,
-            use_ayah_context=use_ayah_context,
-        )
+        _, reference_script = self._reference_script(expected_words, surah=surah, ayah=ayah)
         output = self.runtime([audio_array], [reference_script], sampling_rate=sr)[0]
         return self.chunck_phonemes(output.phonemes.text)
 
@@ -277,17 +236,11 @@ class MuaalemChecker:
         *,
         surah: int | None = None,
         ayah: int | None = None,
-        use_ayah_context: bool = True,
     ) -> list[str]:
         if not hasattr(self, "quran_phonetizer") or not hasattr(self, "chunck_phonemes"):
             return self._tokenizer_fallback(words)
         try:
-            _, reference_script = self._reference_script(
-                words,
-                surah=surah,
-                ayah=ayah,
-                use_ayah_context=use_ayah_context,
-            )
+            _, reference_script = self._reference_script(words, surah=surah, ayah=ayah)
         except Exception:
             return self._tokenizer_fallback(words)
         return self.chunck_phonemes(reference_script.phonemes)
@@ -364,14 +317,12 @@ class MuaalemChecker:
         *,
         surah: int | None = None,
         ayah: int | None = None,
-        use_ayah_context: bool = True,
     ) -> list[TajweedError]:
         audio_array = np.asarray(audio, dtype=np.float32).reshape(-1)
         reference_text, reference_script = self._reference_script(
             expected_words,
             surah=surah,
             ayah=ayah,
-            use_ayah_context=use_ayah_context,
         )
         output = self.runtime([audio_array], [reference_script], sampling_rate=sr)[0]
         predicted_text = output.phonemes.text
@@ -431,7 +382,7 @@ class MuaalemChecker:
                     confidence=0.95,
                 )
             )
-        return dedupe_errors(results)
+        return results
 
     def check_file(self, audio_path: str | Path, expected_words: list[str]) -> list[TajweedError]:
         waveform, sample_rate = load_audio(audio_path)

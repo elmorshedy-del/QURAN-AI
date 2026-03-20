@@ -9,6 +9,7 @@ OPTIONAL_DEPENDENCIES = {
     "diff-match-patch": "diff_match_patch",
     "fastapi": "fastapi",
     "fuzzysearch": "fuzzysearch",
+    "huggingface-hub": "huggingface_hub",
     "levenshtein": "Levenshtein",
     "librosa": "librosa",
     "numpy": "numpy",
