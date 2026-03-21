@@ -51,6 +51,8 @@ def test_get_ayah_endpoint(monkeypatch) -> None:
         response = client.get("/api/surah/1/ayah/1")
     assert response.status_code == 200
     assert response.json()["words"] == ["بِسْمِ", "ٱللَّهِ"]
+    assert len(response.json()["word_audio_urls"]) == 2
+    assert response.json()["word_audio_urls"][0].startswith("/audio/")
 
 
 def test_websocket_summary_flow(monkeypatch) -> None:
@@ -60,6 +62,8 @@ def test_websocket_summary_flow(monkeypatch) -> None:
             websocket.send_json({"type": "start", "surah": 1, "ayah": 1})
             ready = websocket.receive_json()
             assert ready["type"] == "ready"
+            assert len(ready["word_audio_urls"]) == 2
+            assert ready["word_audio_urls"][0].startswith("/audio/")
             websocket.send_json({"type": "stop"})
             summary = websocket.receive_json()
     assert summary["type"] == "summary"

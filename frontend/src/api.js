@@ -9,6 +9,16 @@ function normalizeBase(rawValue) {
   return value.replace(/\/+$/, "");
 }
 
+function toAbsoluteBackendUrl(base, value) {
+  if (!value) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+  return `${base}${value.startsWith("/") ? "" : "/"}${value}`;
+}
+
 export function getApiBase() {
   const configured = normalizeBase(import.meta.env.VITE_API_BASE);
   if (configured) {
@@ -53,8 +63,15 @@ export async function fetchHealth() {
 }
 
 export async function fetchAyah(surah, ayah) {
-  const response = await fetch(`${getApiBase()}/api/surah/${surah}/ayah/${ayah}`);
-  return readJson(response);
+  const base = getApiBase();
+  const response = await fetch(`${base}/api/surah/${surah}/ayah/${ayah}`);
+  const payload = await readJson(response);
+  return {
+    ...payload,
+    word_audio_urls: Array.isArray(payload.word_audio_urls)
+      ? payload.word_audio_urls.map((url) => toAbsoluteBackendUrl(base, url))
+      : [],
+  };
 }
 
 export async function fetchSegmenterHealth() {
