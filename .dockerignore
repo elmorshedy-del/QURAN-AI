@@ -17,7 +17,6 @@ frontend/dist
 audio/husary/raw
 audio/**
 !audio/husary/
-!audio/husary/words/
 !audio/husary/words/**
 data/buraaq/words
 ml/models
