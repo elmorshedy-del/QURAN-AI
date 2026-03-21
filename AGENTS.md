@@ -24,4 +24,4 @@
 - If the user asks to `push`, `ship`, `open PR`, `merge`, `fix comments`, `deploy`, or similar, treat that as GitHub workflow work, not local-only git work.
 - Do not stop after local edits when the user intent is clearly to ship.
 - Do not merge immediately after opening a PR unless the user explicitly says to skip the review wait.
-- Do not skip requesting a GitHub review when a reviewer is available.
+- Do not skip requesting a GitHub review when a reviewer can be requested.
