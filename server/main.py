@@ -24,6 +24,8 @@ from tajweed_ml.quran_text import load_quran_text
 
 checker: MuaalemChecker | None = None
 quran_data: dict[str, list[str]] = {}
+surah_manifest_cache: dict[int, dict[str, list[dict[str, object]]]] = {}
+ayah_payload_cache: dict[tuple[int, int], dict[str, object]] = {}
 MIN_BUFFER_BEFORE_EVAL_SEC = 2.4
 MIN_NEW_AUDIO_BEFORE_EVAL_SEC = 0.8
 OVERLAP_KEEP_SEC = 1.5
@@ -134,19 +136,32 @@ def _resolve_manifest_audio_path(path: Path, *, surah: int) -> Path | None:
     return None
 
 
+def _load_surah_manifest(surah: int) -> dict[str, list[dict[str, object]]]:
+    cached = surah_manifest_cache.get(surah)
+    if cached is not None:
+        return cached
+
+    config = load_config()
+    manifest_path = config.husary_word_audio_dir / str(surah) / "manifest.json"
+    if not manifest_path.exists():
+        surah_manifest_cache[surah] = {}
+        return {}
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        manifest = {}
+    surah_manifest_cache[surah] = manifest
+    return manifest
+
+
 def _served_audio_url(surah: int, ayah: int, word_index: int) -> str | None:
     config = load_config()
     preferred = config.served_word_audio_dir / str(surah) / str(ayah) / f"{word_index}.mp3"
     if preferred.exists():
         return f"/audio/words/{surah}/{ayah}/{word_index}.mp3"
 
-    manifest_path = config.husary_word_audio_dir / str(surah) / "manifest.json"
-    if not manifest_path.exists():
-        return None
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
+    manifest = _load_surah_manifest(surah)
     clips = manifest.get(f"{surah}:{ayah}", [])
     for clip in clips:
         if int(clip.get("word_index", -1)) != word_index:
@@ -162,12 +177,34 @@ def _served_audio_url(surah: int, ayah: int, word_index: int) -> str | None:
     return None
 
 
+def _ayah_payload(surah: int, ayah: int) -> dict[str, object]:
+    key = (surah, ayah)
+    cached = ayah_payload_cache.get(key)
+    if cached is not None:
+        return cached
+
+    words = quran_data.get(f"{surah}:{ayah}", [])
+    payload = {
+        "surah": surah,
+        "ayah": ayah,
+        "words": words,
+        "word_audio_urls": [
+            _served_audio_url(surah, ayah, index)
+            for index in range(len(words))
+        ],
+    }
+    ayah_payload_cache[key] = payload
+    return payload
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     del app
     global checker, quran_data
     checker = MuaalemChecker(device=load_config().default_device)
     quran_data = load_quran_data()
+    surah_manifest_cache.clear()
+    ayah_payload_cache.clear()
     yield
 
 
@@ -209,18 +246,13 @@ async def recite_ws(websocket: WebSocket):
                     total_received_samples = 0
                     new_samples_since_eval = 0
                     provisional_tracker = {}
-                    words = quran_data.get(f"{current_surah}:{current_ayah}", [])
+                    payload = _ayah_payload(current_surah, current_ayah)
+                    words = payload["words"]
                     await websocket.send_json(
                         {
                             "type": "ready",
-                            "surah": current_surah,
-                            "ayah": current_ayah,
-                            "words": words,
+                            **payload,
                             "total_words": len(words),
-                            "word_audio_urls": [
-                                _served_audio_url(current_surah, current_ayah, index)
-                                for index in range(len(words))
-                            ],
                             "backend": _backend_health_payload(),
                         }
                     )
@@ -280,18 +312,13 @@ async def recite_ws(websocket: WebSocket):
                     total_received_samples = 0
                     new_samples_since_eval = 0
                     provisional_tracker = {}
-                    words = quran_data.get(f"{current_surah}:{current_ayah}", [])
+                    payload = _ayah_payload(current_surah, current_ayah)
+                    words = payload["words"]
                     await websocket.send_json(
                         {
                             "type": "ready",
-                            "surah": current_surah,
-                            "ayah": current_ayah,
-                            "words": words,
+                            **payload,
                             "total_words": len(words),
-                            "word_audio_urls": [
-                                _served_audio_url(current_surah, current_ayah, index)
-                                for index in range(len(words))
-                            ],
                         }
                     )
             elif "bytes" in data and is_active and checker is not None:
@@ -350,16 +377,7 @@ async def health():
 
 @app.get("/api/surah/{surah}/ayah/{ayah}")
 async def get_ayah(surah: int, ayah: int):
-    words = quran_data.get(f"{surah}:{ayah}", [])
-    return {
-        "surah": surah,
-        "ayah": ayah,
-        "words": words,
-        "word_audio_urls": [
-            _served_audio_url(surah, ayah, index)
-            for index in range(len(words))
-        ],
-    }
+    return _ayah_payload(surah, ayah)
 
 
 if __name__ == "__main__":

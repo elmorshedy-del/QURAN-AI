@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchAyah, fetchHealth, fetchSegmenterHealth } from "./api";
 import { useRecitation } from "./hooks/useRecitation";
@@ -171,8 +171,40 @@ export default function App() {
   const [latestSummary, setLatestSummary] = useState(null);
   const [eventFeed, setEventFeed] = useState([]);
   const [progress, setProgress] = useState(loadStoredProgress);
+  const [cacheVersion, setCacheVersion] = useState(0);
   const ayahCacheRef = useRef(new Map());
+  const ayahRequestCacheRef = useRef(new Map());
   const feedCounterRef = useRef(0);
+
+  const storeAyahPayload = useCallback((surah, ayah, payload) => {
+    ayahCacheRef.current.set(ayahCacheKey(surah, ayah), payload);
+    setCacheVersion((current) => current + 1);
+    return payload;
+  }, []);
+
+  const primeAyahPayload = useCallback(
+    (surah, ayah) => {
+      const key = ayahCacheKey(surah, ayah);
+      const cached = ayahCacheRef.current.get(key);
+      if (cached) {
+        return Promise.resolve(cached);
+      }
+
+      const inFlight = ayahRequestCacheRef.current.get(key);
+      if (inFlight) {
+        return inFlight;
+      }
+
+      const request = fetchAyah(surah, ayah)
+        .then((payload) => storeAyahPayload(surah, ayah, payload))
+        .finally(() => {
+          ayahRequestCacheRef.current.delete(key);
+        });
+      ayahRequestCacheRef.current.set(key, request);
+      return request;
+    },
+    [storeAyahPayload],
+  );
 
   useEffect(() => {
     persistProgress(progress);
@@ -232,9 +264,8 @@ export default function App() {
         setLoadingAyah(true);
       }
       try {
-        const payload = await fetchAyah(selectedSurah.number, currentAyah);
+        const payload = await primeAyahPayload(selectedSurah.number, currentAyah);
         if (!cancelled) {
-          ayahCacheRef.current.set(cacheKey, payload);
           setAyahPayload(payload);
           setBackendError("");
         }
@@ -255,29 +286,27 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentAyah, selectedSurah.number]);
+  }, [currentAyah, primeAyahPayload, selectedSurah.number]);
 
   useEffect(() => {
-    if (currentAyah >= selectedSurah.verses) {
-      return undefined;
-    }
-    const nextAyahNumber = currentAyah + 1;
-    const nextKey = ayahCacheKey(selectedSurah.number, nextAyahNumber);
-    if (ayahCacheRef.current.has(nextKey)) {
+    const candidates = [currentAyah + 1, currentAyah + 2].filter((ayahNumber) => ayahNumber <= selectedSurah.verses);
+    if (!candidates.length) {
       return undefined;
     }
     let cancelled = false;
-    fetchAyah(selectedSurah.number, nextAyahNumber)
-      .then((payload) => {
-        if (!cancelled) {
-          ayahCacheRef.current.set(nextKey, payload);
-        }
-      })
-      .catch(() => {});
+    Promise.all(
+      candidates.map((ayahNumber) =>
+        primeAyahPayload(selectedSurah.number, ayahNumber).catch(() => null),
+      ),
+    ).catch(() => {
+      if (!cancelled) {
+        return null;
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [currentAyah, selectedSurah.number, selectedSurah.verses]);
+  }, [currentAyah, primeAyahPayload, selectedSurah.number, selectedSurah.verses]);
 
   const addFeedItem = (item) => {
     const id = `${Date.now()}-${feedCounterRef.current}`;
@@ -294,7 +323,7 @@ export default function App() {
           words: message.words,
           word_audio_urls: message.word_audio_urls || [],
         };
-        ayahCacheRef.current.set(ayahCacheKey(message.surah, message.ayah), payload);
+        storeAyahPayload(message.surah, message.ayah, payload);
         if (message.surah === selectedSurah.number && message.ayah === currentAyah) {
           setAyahPayload(payload);
           setLoadingAyah(false);
@@ -357,6 +386,21 @@ export default function App() {
     () => new Set(reviewItems.map((item) => item.word_index)),
     [reviewItems],
   );
+  const nextAyahNumber = useMemo(
+    () => (currentAyah < selectedSurah.verses ? currentAyah + 1 : null),
+    [currentAyah, selectedSurah.verses],
+  );
+  const nextAyahPayload = useMemo(
+    () =>
+      nextAyahNumber === null
+        ? null
+        : ayahCacheRef.current.get(ayahCacheKey(selectedSurah.number, nextAyahNumber)) || null,
+    [cacheVersion, nextAyahNumber, selectedSurah.number],
+  );
+  const nextAyahText = useMemo(
+    () => formatAyah(nextAyahPayload?.words || []),
+    [nextAyahPayload],
+  );
   const difficultyColor = inferDifficultyColor(selectedSurah.difficulty);
   const backendStatus = describeBackendStatus(backendHealth, backendError);
   const segmenterStatus = describeSegmenterStatus(segmenterHealth, segmenterError);
@@ -374,14 +418,20 @@ export default function App() {
 
   const nextAyah = () => {
     const nextAyahNumber = Math.min(selectedSurah.verses, currentAyah + 1);
+    if (nextAyahNumber === currentAyah) {
+      return;
+    }
     const cached = ayahCacheRef.current.get(ayahCacheKey(selectedSurah.number, nextAyahNumber));
     if (cached) {
       setAyahPayload(cached);
       setLoadingAyah(false);
     } else {
       setLoadingAyah(true);
+      void primeAyahPayload(selectedSurah.number, nextAyahNumber).catch(() => {});
     }
-    setCurrentAyah(nextAyahNumber);
+    startTransition(() => {
+      setCurrentAyah(nextAyahNumber);
+    });
     setLatestCorrection(null);
     setLatestSummary(null);
     setEventFeed([]);
@@ -389,14 +439,20 @@ export default function App() {
 
   const previousAyah = () => {
     const previousAyahNumber = Math.max(1, currentAyah - 1);
+    if (previousAyahNumber === currentAyah) {
+      return;
+    }
     const cached = ayahCacheRef.current.get(ayahCacheKey(selectedSurah.number, previousAyahNumber));
     if (cached) {
       setAyahPayload(cached);
       setLoadingAyah(false);
     } else {
       setLoadingAyah(true);
+      void primeAyahPayload(selectedSurah.number, previousAyahNumber).catch(() => {});
     }
-    setCurrentAyah(previousAyahNumber);
+    startTransition(() => {
+      setCurrentAyah(previousAyahNumber);
+    });
     setLatestCorrection(null);
     setLatestSummary(null);
     setEventFeed([]);
@@ -654,8 +710,31 @@ export default function App() {
                 </div>
 
                 <div className="ayah-card">
+                  <div className="reading-flow">
+                    <div className="reading-flow__current">
+                      <span className="status-label">{t("Current ayah", "الآية الحالية")}</span>
+                      <strong>{t(`Ayah ${currentAyah}`, `الآية ${currentAyah}`)}</strong>
+                      <p>{t("Read this ayah in one calm pass, then stop for revision.", "اقرأ هذه الآية في مرور هادئ واحد، ثم توقف للمراجعة.")}</p>
+                    </div>
+                    <div className={nextAyahPayload ? "reading-flow__next reading-flow__next--ready" : "reading-flow__next"}>
+                      <span className="status-label">{t("Up next", "التالي")}</span>
+                      <strong>
+                        {nextAyahNumber ? t(`Ayah ${nextAyahNumber}`, `الآية ${nextAyahNumber}`) : t("End of surah", "نهاية السورة")}
+                      </strong>
+                      <p>
+                        {nextAyahNumber
+                          ? nextAyahPayload
+                            ? nextAyahText || t("Ready to open instantly.", "جاهزة للفتح فوراً.")
+                            : t("Preparing the next ayah in the background now.", "يتم تجهيز الآية التالية في الخلفية الآن.")
+                          : t("You are on the last ayah of this guided surah.", "أنت على آخر آية في هذه السورة الموجّهة.")}
+                      </p>
+                    </div>
+                  </div>
                   {loadingAyah ? (
-                    <p className="muted">{t("Loading ayah text…", "جاري تحميل نص الآية…")}</p>
+                    <div className="loading-block">
+                      <div className="loading-pulse loading-pulse--ayah" />
+                      <p className="muted">{t("Loading ayah text…", "جاري تحميل نص الآية…")}</p>
+                    </div>
                   ) : ayahText ? (
                     <>
                       <p className="ayah-ar">{ayahText}</p>
@@ -695,11 +774,11 @@ export default function App() {
                     </button>
                   )}
                   <button
-                    className="button button--ghost"
+                    className={nextAyahPayload ? "button button--primary button--soft" : "button button--ghost"}
                     onClick={nextAyah}
                     disabled={currentAyah === selectedSurah.verses || recitation.isRecording}
                   >
-                    {t("Next ayah", "الآية التالية")}
+                    {nextAyahPayload ? t("Next ayah is ready", "الآية التالية جاهزة") : t("Next ayah", "الآية التالية")}
                   </button>
                 </div>
 

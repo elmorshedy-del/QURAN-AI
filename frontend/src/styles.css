@@ -1,17 +1,17 @@
 @import url("https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap");
 
 :root {
-  --sand: #f6efe1;
-  --sand-deep: #ecdfc6;
-  --ink: #1f2a1f;
-  --forest: #1b4332;
-  --forest-soft: #2f5f4a;
-  --gold: #b8844b;
-  --clay: #9d5c43;
-  --emerald: #2f7d5f;
-  --cream: rgba(255, 252, 245, 0.82);
-  --line: rgba(27, 67, 50, 0.12);
-  --shadow: 0 24px 60px rgba(42, 36, 22, 0.08);
+  --sand: #f5eddc;
+  --sand-deep: #e6d4ae;
+  --ink: #18231c;
+  --forest: #173d31;
+  --forest-soft: #2d5f4f;
+  --gold: #c08d47;
+  --clay: #8f5c46;
+  --emerald: #2d7f60;
+  --cream: rgba(255, 252, 245, 0.88);
+  --line: rgba(23, 61, 49, 0.11);
+  --shadow: 0 28px 70px rgba(39, 32, 19, 0.09);
   --radius-xl: 28px;
   --radius-lg: 20px;
   --radius-md: 14px;
@@ -30,8 +30,8 @@ body,
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(184, 132, 75, 0.22), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(47, 125, 95, 0.18), transparent 24%),
+    radial-gradient(circle at top left, rgba(192, 141, 71, 0.22), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(45, 127, 96, 0.16), transparent 24%),
     linear-gradient(180deg, #fbf6ed 0%, #efe1ca 100%);
   color: var(--ink);
   font-family: "Manrope", sans-serif;
@@ -410,6 +410,10 @@ textarea {
   box-shadow: 0 16px 34px rgba(27, 67, 50, 0.2);
 }
 
+.button--soft {
+  box-shadow: 0 18px 38px rgba(45, 127, 96, 0.22);
+}
+
 .button--ghost {
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid var(--line);
@@ -430,6 +434,10 @@ textarea {
 .feed-head {
   display: flex;
   gap: 12px;
+}
+
+.control-row {
+  flex-wrap: wrap;
 }
 
 .practice-layout {
@@ -499,9 +507,66 @@ textarea {
   margin: 18px 0;
   border-radius: 24px;
   background:
-    radial-gradient(circle at top left, rgba(184, 132, 75, 0.14), transparent 22%),
-    rgba(255, 252, 246, 0.78);
+    radial-gradient(circle at top left, rgba(192, 141, 71, 0.15), transparent 24%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.88), rgba(250, 243, 229, 0.78));
   border: 1px solid rgba(27, 67, 50, 0.08);
+}
+
+.reading-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.9fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.reading-flow__current,
+.reading-flow__next {
+  padding: 18px 18px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(23, 61, 49, 0.08);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.reading-flow__next {
+  background: linear-gradient(135deg, rgba(255, 248, 236, 0.88), rgba(249, 241, 226, 0.74));
+}
+
+.reading-flow__next--ready {
+  border-color: rgba(45, 127, 96, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(45, 127, 96, 0.06);
+}
+
+.reading-flow strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.reading-flow p {
+  margin: 0;
+  color: rgba(24, 35, 28, 0.72);
+  line-height: 1.65;
+}
+
+.loading-block {
+  display: grid;
+  gap: 12px;
+}
+
+.loading-pulse {
+  border-radius: 18px;
+  background: linear-gradient(
+    90deg,
+    rgba(230, 220, 200, 0.56) 0%,
+    rgba(255, 255, 255, 0.84) 50%,
+    rgba(230, 220, 200, 0.56) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.35s linear infinite;
+}
+
+.loading-pulse--ayah {
+  height: 88px;
 }
 
 .ayah-ar {
@@ -657,7 +722,7 @@ textarea {
 .review-success {
   padding: 18px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(27, 67, 50, 0.08);
 }
 
@@ -741,7 +806,7 @@ textarea {
 .feed-item {
   padding: 14px 16px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.66);
   border: 1px solid rgba(27, 67, 50, 0.08);
 }
 
@@ -810,12 +875,22 @@ textarea {
   }
 }
 
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
 @media (max-width: 1080px) {
   .hero-card,
   .practice-layout,
   .feedback-grid--practice,
   .overview-grid,
-  .journey-grid {
+  .journey-grid,
+  .reading-flow {
     grid-template-columns: 1fr;
   }
 
