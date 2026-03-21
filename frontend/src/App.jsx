@@ -175,10 +175,19 @@ export default function App() {
   const ayahCacheRef = useRef(new Map());
   const ayahRequestCacheRef = useRef(new Map());
   const feedCounterRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const storeAyahPayload = useCallback((surah, ayah, payload) => {
     ayahCacheRef.current.set(ayahCacheKey(surah, ayah), payload);
-    setCacheVersion((current) => current + 1);
+    if (mountedRef.current) {
+      setCacheVersion((current) => current + 1);
+    }
     return payload;
   }, []);
 
