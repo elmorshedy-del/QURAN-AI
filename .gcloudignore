@@ -14,6 +14,8 @@ tmp
 frontend/node_modules
 frontend/dist
 audio/husary/raw
+audio
 data/buraaq/words
 ml/models
 ml/vendor
+QURAN-AI

@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${APP_ROOT}"
 
+TEMP_CONTEXT=""
+
 PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
 REGION="${REGION:-us-east4}"
 REPOSITORY="${REPOSITORY:-quran-ai}"
@@ -34,14 +36,43 @@ gcloud artifacts repositories create "${REPOSITORY}" \
   --repository-format=docker \
   --location="${REGION}" >/dev/null 2>&1 || true
 
+cleanup() {
+  if [[ -n "${TEMP_CONTEXT}" && -d "${TEMP_CONTEXT}" ]]; then
+    rm -rf "${TEMP_CONTEXT}"
+  fi
+}
+
+trap cleanup EXIT
+
+prepare_context() {
+  TEMP_CONTEXT="$(mktemp -d)"
+
+  cp "${APP_ROOT}/Dockerfile" "${TEMP_CONTEXT}/Dockerfile"
+  cp "${APP_ROOT}/Dockerfile.segmenter" "${TEMP_CONTEXT}/Dockerfile.segmenter"
+  cp "${APP_ROOT}/cloudbuild.cloudrun.yaml" "${TEMP_CONTEXT}/cloudbuild.cloudrun.yaml"
+  cp "${APP_ROOT}/docker-entrypoint.sh" "${TEMP_CONTEXT}/docker-entrypoint.sh"
+  cp "${APP_ROOT}/requirements.txt" "${TEMP_CONTEXT}/requirements.txt"
+  cp "${APP_ROOT}/pyproject.toml" "${TEMP_CONTEXT}/pyproject.toml"
+  cp "${APP_ROOT}/cli.py" "${TEMP_CONTEXT}/cli.py"
+  cp -R "${APP_ROOT}/src" "${TEMP_CONTEXT}/src"
+  cp -R "${APP_ROOT}/ml" "${TEMP_CONTEXT}/ml"
+  cp -R "${APP_ROOT}/server" "${TEMP_CONTEXT}/server"
+  cp -R "${APP_ROOT}/data" "${TEMP_CONTEXT}/data"
+}
+
 deploy_service() {
   local service="$1"
   local image="$2"
   local dockerfile="$3"
 
-  gcloud builds submit . \
+  prepare_context
+
+  gcloud builds submit "${TEMP_CONTEXT}" \
     --config cloudbuild.cloudrun.yaml \
     --substitutions="_REGION=${REGION},_SERVICE=${service},_REPOSITORY=${REPOSITORY},_IMAGE=${image},_DOCKERFILE=${dockerfile},_GPU_TYPE=${GPU_TYPE},_CPU=${CPU},_MEMORY=${MEMORY},_MIN_INSTANCES=${MIN_INSTANCES},_MAX_INSTANCES=${MAX_INSTANCES}"
+
+  cleanup
+  TEMP_CONTEXT=""
 
   local url
   url="$(gcloud run services describe "${service}" --region "${REGION}" --format='value(status.url)')"
