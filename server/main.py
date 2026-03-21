@@ -29,6 +29,7 @@ MIN_NEW_AUDIO_BEFORE_EVAL_SEC = 0.8
 OVERLAP_KEEP_SEC = 1.5
 PROVISIONAL_CONFIRMATIONS = 2
 PROVISIONAL_COOLDOWN_SEC = 1.2
+SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
 def load_quran_data() -> dict[str, list[str]]:
@@ -86,6 +87,27 @@ def _backend_health_payload() -> dict[str, object]:
             "overlap_ms": int(OVERLAP_KEEP_SEC * 1000),
         },
     }
+
+
+def _prioritize_errors(errors) -> list[object]:
+    return sorted(
+        errors,
+        key=lambda error: (
+            getattr(error, "word_index", 0),
+            SEVERITY_ORDER.get(str(getattr(error, "severity", "low")), 3),
+            -float(getattr(error, "confidence", 0.0) or 0.0),
+            str(getattr(error, "rule", "")),
+        ),
+    )
+
+
+def _collapse_word_level_errors(errors) -> list[object]:
+    selected: dict[int, object] = {}
+    for error in _prioritize_errors(errors):
+        word_index = int(getattr(error, "word_index", 0))
+        if word_index not in selected:
+            selected[word_index] = error
+    return [selected[index] for index in sorted(selected)]
 
 
 def _resolve_manifest_audio_path(path: Path, *, surah: int) -> Path | None:
@@ -202,32 +224,26 @@ async def recite_ws(websocket: WebSocket):
                     is_active = False
                     words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                     if len(session_audio) > 0 and checker is not None and words:
-                        errors = checker.check(
-                            session_audio,
-                            words,
-                            surah=current_surah,
-                            ayah=current_ayah,
+                        errors = _collapse_word_level_errors(
+                            checker.check(
+                                session_audio,
+                                words,
+                                surah=current_surah,
+                                ayah=current_ayah,
+                            )
                         )
-                        total_phonemes = max(
-                            1,
-                            len(
-                                checker.get_expected_phonemes(
-                                    words,
-                                    surah=current_surah,
-                                    ayah=current_ayah,
-                                )
-                            ),
-                        )
-                        error_count = len(errors)
-                        score = max(0, int((1 - error_count / total_phonemes) * 100))
+                        flagged_words = {error.word_index for error in errors}
+                        score = max(0, int((1 - len(flagged_words) / max(1, len(words))) * 100))
                         await websocket.send_json(
                             {
                                 "type": "summary",
                                 "score": score,
-                                "total_errors": error_count,
+                                "total_errors": len(errors),
+                                "total_flagged_words": len(flagged_words),
                                 "errors": [
                                     {
                                         "word_index": error.word_index,
+                                        "word_ar": words[error.word_index] if error.word_index < len(words) else "",
                                         "error_type": error.error_type,
                                         "rule": error.rule,
                                         "description": error.description_en,
@@ -245,6 +261,7 @@ async def recite_ws(websocket: WebSocket):
                                 "type": "summary",
                                 "score": 100,
                                 "total_errors": 0,
+                                "total_flagged_words": 0,
                                 "errors": [],
                             }
                         )
@@ -282,11 +299,13 @@ async def recite_ws(websocket: WebSocket):
                 words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                 if not words:
                     continue
-                errors = checker.check(
-                    window_audio,
-                    words,
-                    surah=current_surah,
-                    ayah=current_ayah,
+                errors = _collapse_word_level_errors(
+                    checker.check(
+                        window_audio,
+                        words,
+                        surah=current_surah,
+                        ayah=current_ayah,
+                    )
                 )
                 if errors:
                     top_error = errors[0]

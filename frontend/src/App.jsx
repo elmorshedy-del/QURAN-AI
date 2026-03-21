@@ -285,7 +285,7 @@ export default function App() {
       setLatestCorrection(message);
       addFeedItem({
         kind: "correction",
-        title: message.rule || "Correction",
+        title: message.rule || "Tajweed note",
         titleAr: message.word_ar || "تصحيح",
         body: message.description,
       });
@@ -323,7 +323,10 @@ export default function App() {
         kind: "summary",
         title: `Score ${message.score}`,
         titleAr: "ملخص التلاوة",
-        body: `${message.total_errors} detected issues in this pass.`,
+        body:
+          message.total_flagged_words > 0
+            ? `${message.total_flagged_words} words need review in this ayah.`
+            : "No rule-level issues were flagged in this pass.",
       });
     },
     onStateChange: setSessionState,
@@ -635,8 +638,10 @@ export default function App() {
                         <span>{latestSummary.score}</span>
                       </div>
                       <div>
-                        <strong>{latestSummary.total_errors} flagged issues</strong>
-                        <p>Use the event stream below to inspect recent corrections and move to the next ayah.</p>
+                        <strong>
+                          {latestSummary.total_flagged_words ?? latestSummary.total_errors} words need review
+                        </strong>
+                        <p>Review the flagged Quran-rule notes below, then repeat the ayah smoothly from the start.</p>
                       </div>
                     </div>
                   ) : (
@@ -726,14 +731,14 @@ export default function App() {
               <div className="feed-list">
                 {progress.summaries.length ? (
                   progress.summaries.map((summary, index) => (
-                    <div key={`${summary.createdAt}-${index}`} className="feed-item">
+                      <div key={`${summary.createdAt}-${index}`} className="feed-item">
                       <div className="feed-head">
                         <strong>
                           Surah {summary.surah}, Ayah {summary.ayah}
                         </strong>
                         <span>Score {summary.score}</span>
                       </div>
-                      <p>{summary.errors} issues detected in this saved session.</p>
+                      <p>{summary.errors} flagged words in this saved session.</p>
                     </div>
                   ))
                 ) : (
