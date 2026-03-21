@@ -17,6 +17,7 @@ COPY src/ src/
 COPY ml/ ml/
 COPY server/ server/
 COPY data/ data/
+COPY audio/ audio/
 COPY cli.py .
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
