@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import { fetchAyah, fetchHealth, fetchSegmenterHealth, getApiBase, getSegmenterBase } from "./api";
+import { fetchAyah, fetchHealth, fetchSegmenterHealth } from "./api";
 import { useRecitation } from "./hooks/useRecitation";
 
 const SURAHS = [
@@ -85,6 +85,76 @@ function inferDifficultyColor(level) {
   return "var(--clay)";
 }
 
+function describeBackendStatus(health, error) {
+  if (error) {
+    return { label: "Unavailable", detail: error };
+  }
+  if (!health) {
+    return { label: "Checking", detail: "Waiting for the backend health response." };
+  }
+  if (health.ready) {
+    const device = health.device ? ` on ${health.device}` : "";
+    return { label: "Ready", detail: `${health.model || "Backend model"}${device}` };
+  }
+  return { label: "Warming", detail: health.model || "The backend is starting up." };
+}
+
+function describeSegmenterStatus(health, error) {
+  const segmenter = health?.segmenter || null;
+  if (error) {
+    return { label: "Unavailable", detail: error };
+  }
+  if (!health || !segmenter) {
+    return { label: "Checking", detail: "Waiting for the segmenter health response." };
+  }
+  if (segmenter.warm_loaded) {
+    return { label: "Warm loaded", detail: "Segmenter model is loaded and ready for requests." };
+  }
+  if (segmenter.ready) {
+    return { label: "Cached", detail: "Segmenter service is reachable and its model files are cached." };
+  }
+  if (segmenter.load_error) {
+    return { label: "Error", detail: segmenter.load_error };
+  }
+  return { label: "Starting", detail: "Segmenter service is reachable but still preparing runtime state." };
+}
+
+function describeSocketStatus(sessionState, recitation) {
+  const socketState = sessionState.socketState || recitation.socketState || "idle";
+  if (recitation.connectionError) {
+    return { label: "Error", detail: recitation.connectionError };
+  }
+  if (socketState === "connected") {
+    return { label: "Connected", detail: "WebSocket session is connected to the live recitation backend." };
+  }
+  if (socketState === "connecting") {
+    return { label: "Connecting", detail: "Opening the live recitation socket." };
+  }
+  if (socketState === "error") {
+    return { label: "Error", detail: "The live recitation socket could not be established." };
+  }
+  return { label: "Idle", detail: "The recitation socket will connect when you start a live session." };
+}
+
+function describeAudioStatus(recitation) {
+  if (recitation.micPermission === "denied") {
+    return { label: "Blocked", detail: "Microphone access is denied in this browser." };
+  }
+  if (recitation.audioState === "speech") {
+    return { label: "Speech detected", detail: "Live audio is reaching the browser capture pipeline." };
+  }
+  if (recitation.audioState === "quiet") {
+    return { label: "Listening", detail: "Microphone is open but the current input level is low." };
+  }
+  if (recitation.audioState === "requesting") {
+    return { label: "Waiting", detail: "Requesting microphone permission." };
+  }
+  if (recitation.isRecording) {
+    return { label: "Open", detail: "Microphone is active and waiting for clearer speech." };
+  }
+  return { label: "Idle", detail: "Microphone capture starts when you begin a recitation session." };
+}
+
 function WaveBars({ active }) {
   return (
     <div className={`wave ${active ? "wave--active" : ""}`}>
@@ -122,9 +192,6 @@ export default function App() {
   const [latestSummary, setLatestSummary] = useState(null);
   const [eventFeed, setEventFeed] = useState([]);
   const [progress, setProgress] = useState(loadStoredProgress);
-
-  const apiBase = getApiBase();
-  const segmenterBase = getSegmenterBase();
 
   useEffect(() => {
     persistProgress(progress);
@@ -264,6 +331,10 @@ export default function App() {
 
   const ayahText = useMemo(() => formatAyah(ayahPayload.words), [ayahPayload.words]);
   const difficultyColor = inferDifficultyColor(selectedSurah.difficulty);
+  const backendStatus = describeBackendStatus(backendHealth, backendError);
+  const segmenterStatus = describeSegmenterStatus(segmenterHealth, segmenterError);
+  const socketStatus = describeSocketStatus(sessionState, recitation);
+  const audioStatus = describeAudioStatus(recitation);
 
   const nextAyah = () => {
     setCurrentAyah((current) => Math.min(selectedSurah.verses, current + 1));
@@ -333,28 +404,24 @@ export default function App() {
             <aside className="hero-status">
               <div className="status-card">
                 <span className="status-label">Backend</span>
-                <strong>{backendHealth?.status === "ok" ? "Connected" : "Checking"}</strong>
-                <p>{backendHealth?.model || backendError || "Waiting for health check response."}</p>
+                <strong>{backendStatus.label}</strong>
+                <p>{backendStatus.detail}</p>
               </div>
               <div className="status-card">
                 <span className="status-label">Segmenter</span>
-                <strong>{segmenterHealth?.status === "ok" ? "Connected" : "Checking"}</strong>
-                <p>
-                  {segmenterHealth?.service === "segmenter"
-                    ? "Dedicated Cloud Run segmenter service is ready."
-                    : segmenterError || "Waiting for segmenter health check response."}
-                </p>
+                <strong>{segmenterStatus.label}</strong>
+                <p>{segmenterStatus.detail}</p>
               </div>
               <div className="status-card">
-                <span className="status-label">Deployment split</span>
-                <strong>Railway + Cloud Run</strong>
-                <p>Frontend stays on Railway while backend and segmenter run as separate Cloud Run GPU services.</p>
+                <span className="status-label">Recitation socket</span>
+                <strong>{socketStatus.label}</strong>
+                <p>{socketStatus.detail}</p>
               </div>
               <div className="status-card">
-                <span className="status-label">Live endpoint</span>
-                <strong>{apiBase}</strong>
-                <p>Set backend, websocket, and segmenter URLs in Railway for production deployment.</p>
-                <small>{segmenterBase}</small>
+                <span className="status-label">Audio capture</span>
+                <strong>{audioStatus.label}</strong>
+                <p>{audioStatus.detail}</p>
+                <small>{recitation.isRecording ? `Input level ${Math.max(1, Math.round(recitation.audioLevel * 900))}%` : "Mic idle"}</small>
               </div>
             </aside>
           </section>
@@ -521,8 +588,12 @@ export default function App() {
                     <strong>{sessionState.status || "idle"}</strong>
                   </div>
                   <div>
-                    <span className="status-label">Connection</span>
-                    <strong>{recitation.connectionError || (recitation.isConnected ? "Stable" : "Waiting")}</strong>
+                    <span className="status-label">Socket</span>
+                    <strong>{socketStatus.label}</strong>
+                  </div>
+                  <div>
+                    <span className="status-label">Audio</span>
+                    <strong>{audioStatus.label}</strong>
                   </div>
                 </div>
 

@@ -44,15 +44,23 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_root():
-    return {"status": "ok"}
+    status = segmenter_status(load_config().default_device)
+    return {
+        "status": "ok",
+        "service": "segmenter",
+        "ready": bool(status.get("ready")),
+        "segmenter": status,
+    }
 
 
 @app.get("/api/health")
 async def health():
+    status = segmenter_status(load_config().default_device)
     return {
         "status": "ok",
         "service": "segmenter",
-        "segmenter": segmenter_status(load_config().default_device),
+        "ready": bool(status.get("ready")),
+        "segmenter": status,
     }
 
 

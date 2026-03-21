@@ -57,6 +57,10 @@ export function useRecitation({
   const [isRecording, setIsRecording] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState("");
+  const [socketState, setSocketState] = useState("idle");
+  const [audioState, setAudioState] = useState("idle");
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [micPermission, setMicPermission] = useState("unknown");
 
   const wsRef = useRef(null);
   const mediaStreamRef = useRef(null);
@@ -65,6 +69,7 @@ export function useRecitation({
   const chunksRef = useRef([]);
   const intervalRef = useRef(null);
   const connectPromiseRef = useRef(null);
+  const meterUpdateRef = useRef(0);
 
   const apiBase = inferHttpBase();
   const wsBase = inferWsBase(apiBase);
@@ -100,6 +105,8 @@ export function useRecitation({
       mediaStreamRef.current = null;
     }
     chunksRef.current = [];
+    setAudioState("idle");
+    setAudioLevel(0);
   }, []);
 
   const connect = useCallback(() => {
@@ -111,12 +118,15 @@ export function useRecitation({
     }
 
     connectPromiseRef.current = new Promise((resolve, reject) => {
+      setSocketState("connecting");
+      emitState({ status: "connecting", socketState: "connecting" });
       const ws = new WebSocket(`${wsBase}/ws/recite`);
 
       ws.onopen = () => {
         setIsConnected(true);
+        setSocketState("connected");
         setConnectionError("");
-        emitState({ status: "connected" });
+        emitState({ status: "connected", socketState: "connected" });
         connectPromiseRef.current = null;
         resolve();
       };
@@ -124,11 +134,23 @@ export function useRecitation({
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
         switch (message.type) {
+          case "system_status":
+            emitState({
+              status: message.state || "ready",
+              socketState: "connected",
+              backend: message.backend || null,
+            });
+            break;
           case "ready":
             if (onReady) {
               onReady(message);
             }
-            emitState({ status: "ready", message });
+            emitState({
+              status: "ready",
+              message,
+              socketState: "connected",
+              backend: message.backend || null,
+            });
             break;
           case "correction": {
             const correction = {
@@ -142,20 +164,20 @@ export function useRecitation({
             if (onCorrection) {
               onCorrection(correction);
             }
-            emitState({ status: "correction", message: correction });
+            emitState({ status: "correction", message: correction, socketState: "connected" });
             break;
           }
           case "correct":
             if (onCorrect) {
               onCorrect(message);
             }
-            emitState({ status: "correct", message });
+            emitState({ status: "correct", message, socketState: "connected" });
             break;
           case "summary":
             if (onSummary) {
               onSummary(message);
             }
-            emitState({ status: "summary", message });
+            emitState({ status: "summary", message, socketState: "connected" });
             break;
           default:
             break;
@@ -163,15 +185,17 @@ export function useRecitation({
       };
 
       ws.onerror = () => {
+        setSocketState("error");
         setConnectionError("Unable to reach the recitation server.");
-        emitState({ status: "error" });
+        emitState({ status: "error", socketState: "error" });
       };
 
       ws.onclose = () => {
         setIsConnected(false);
+        setSocketState("disconnected");
         wsRef.current = null;
         connectPromiseRef.current = null;
-        emitState({ status: "disconnected" });
+        emitState({ status: "disconnected", socketState: "disconnected" });
       };
 
       wsRef.current = ws;
@@ -195,6 +219,8 @@ export function useRecitation({
     await connect();
 
     try {
+      setMicPermission("requesting");
+      setAudioState("requesting");
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: SAMPLE_RATE,
@@ -204,6 +230,7 @@ export function useRecitation({
         },
       });
 
+      setMicPermission("granted");
       mediaStreamRef.current = stream;
       const audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
       audioContextRef.current = audioContext;
@@ -214,12 +241,28 @@ export function useRecitation({
 
       processor.onaudioprocess = (event) => {
         const float32Data = event.inputBuffer.getChannelData(0);
+        let sumSquares = 0;
         const int16Data = new Int16Array(float32Data.length);
         for (let index = 0; index < float32Data.length; index += 1) {
+          const sample = float32Data[index];
+          sumSquares += sample * sample;
           int16Data[index] = Math.max(
             -32768,
-            Math.min(32767, Math.round(float32Data[index] * 32768)),
+            Math.min(32767, Math.round(sample * 32768)),
           );
+        }
+        const rms = Math.sqrt(sumSquares / Math.max(1, float32Data.length));
+        const now = Date.now();
+        if (now - meterUpdateRef.current > 180) {
+          meterUpdateRef.current = now;
+          setAudioLevel(rms);
+          setAudioState(rms > 0.01 ? "speech" : "quiet");
+          emitState({
+            status: "recording",
+            socketState: "connected",
+            audioState: rms > 0.01 ? "speech" : "quiet",
+            audioLevel: rms,
+          });
         }
         chunksRef.current.push(int16Data.buffer);
       };
@@ -244,11 +287,17 @@ export function useRecitation({
       }, CHUNK_INTERVAL_MS);
 
       setIsRecording(true);
-      emitState({ status: "recording" });
+      emitState({
+        status: "recording",
+        socketState: "connected",
+        audioState: "warming",
+        audioLevel: 0,
+      });
     } catch (error) {
       teardownAudio();
+      setMicPermission("denied");
       setConnectionError("Microphone access is required to start recitation.");
-      emitState({ status: "error", error: String(error) });
+      emitState({ status: "error", error: String(error), audioState: "error" });
     }
   }, [ayah, connect, emitState, surah, teardownAudio]);
 
@@ -264,8 +313,8 @@ export function useRecitation({
 
     teardownAudio();
     setIsRecording(false);
-    emitState({ status: "stopped" });
-  }, [emitState, teardownAudio]);
+    emitState({ status: "stopped", socketState, audioState: "idle", audioLevel: 0 });
+  }, [emitState, socketState, teardownAudio]);
 
   useEffect(() => {
     return () => {
@@ -281,6 +330,10 @@ export function useRecitation({
     wsBase,
     isRecording,
     isConnected,
+    socketState,
+    audioState,
+    audioLevel,
+    micPermission,
     connectionError,
     connect,
     startRecording,
