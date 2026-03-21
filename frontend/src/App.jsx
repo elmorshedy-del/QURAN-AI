@@ -293,19 +293,12 @@ export default function App() {
     if (!candidates.length) {
       return undefined;
     }
-    let cancelled = false;
-    Promise.all(
+    void Promise.all(
       candidates.map((ayahNumber) =>
         primeAyahPayload(selectedSurah.number, ayahNumber).catch(() => null),
       ),
-    ).catch(() => {
-      if (!cancelled) {
-        return null;
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
+    );
+    return undefined;
   }, [currentAyah, primeAyahPayload, selectedSurah.number, selectedSurah.verses]);
 
   const addFeedItem = (item) => {

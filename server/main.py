@@ -149,7 +149,7 @@ def _load_surah_manifest(surah: int) -> dict[str, list[dict[str, object]]]:
 
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except Exception:
+    except (json.JSONDecodeError, OSError):
         manifest = {}
     surah_manifest_cache[surah] = manifest
     return manifest
