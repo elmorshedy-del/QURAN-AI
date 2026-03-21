@@ -188,6 +188,7 @@ def _ayah_payload(surah: int, ayah: int) -> dict[str, object]:
         "surah": surah,
         "ayah": ayah,
         "words": words,
+        "total_words": len(words),
         "word_audio_urls": [
             _served_audio_url(surah, ayah, index)
             for index in range(len(words))
@@ -247,12 +248,10 @@ async def recite_ws(websocket: WebSocket):
                     new_samples_since_eval = 0
                     provisional_tracker = {}
                     payload = _ayah_payload(current_surah, current_ayah)
-                    words = payload["words"]
                     await websocket.send_json(
                         {
                             "type": "ready",
                             **payload,
-                            "total_words": len(words),
                             "backend": _backend_health_payload(),
                         }
                     )
@@ -313,12 +312,10 @@ async def recite_ws(websocket: WebSocket):
                     new_samples_since_eval = 0
                     provisional_tracker = {}
                     payload = _ayah_payload(current_surah, current_ayah)
-                    words = payload["words"]
                     await websocket.send_json(
                         {
                             "type": "ready",
                             **payload,
-                            "total_words": len(words),
                         }
                     )
             elif "bytes" in data and is_active and checker is not None:
