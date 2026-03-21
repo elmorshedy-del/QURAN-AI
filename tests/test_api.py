@@ -118,8 +118,8 @@ def test_ayah_payload_cache_reuses_manifest(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setenv(STORAGE_ROOT_ENV, str(tmp_path))
     main.quran_data = {"1:1": ["بِسْمِ", "ٱللَّهِ"]}
-    main.surah_manifest_cache.clear()
-    main.ayah_payload_cache.clear()
+    main._load_surah_manifest.cache_clear()
+    main._ayah_payload.cache_clear()
 
     original_read_text = Path.read_text
     reads = {"count": 0}
@@ -137,4 +137,4 @@ def test_ayah_payload_cache_reuses_manifest(monkeypatch, tmp_path) -> None:
     assert first is second
     assert reads["count"] == 1
     assert first["word_audio_urls"][0].startswith("/audio/")
-    assert (1, 1) in main.ayah_payload_cache
+    assert main._ayah_payload.cache_info().currsize >= 1

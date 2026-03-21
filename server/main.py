@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -24,8 +25,6 @@ from tajweed_ml.quran_text import load_quran_text
 
 checker: MuaalemChecker | None = None
 quran_data: dict[str, list[str]] = {}
-surah_manifest_cache: dict[int, dict[str, list[dict[str, object]]]] = {}
-ayah_payload_cache: dict[tuple[int, int], dict[str, object]] = {}
 MIN_BUFFER_BEFORE_EVAL_SEC = 2.4
 MIN_NEW_AUDIO_BEFORE_EVAL_SEC = 0.8
 OVERLAP_KEEP_SEC = 1.5
@@ -136,22 +135,17 @@ def _resolve_manifest_audio_path(path: Path, *, surah: int) -> Path | None:
     return None
 
 
+@lru_cache(maxsize=128)
 def _load_surah_manifest(surah: int) -> dict[str, list[dict[str, object]]]:
-    cached = surah_manifest_cache.get(surah)
-    if cached is not None:
-        return cached
-
     config = load_config()
     manifest_path = config.husary_word_audio_dir / str(surah) / "manifest.json"
     if not manifest_path.exists():
-        surah_manifest_cache[surah] = {}
         return {}
 
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         manifest = {}
-    surah_manifest_cache[surah] = manifest
     return manifest
 
 
@@ -177,14 +171,10 @@ def _served_audio_url(surah: int, ayah: int, word_index: int) -> str | None:
     return None
 
 
+@lru_cache(maxsize=512)
 def _ayah_payload(surah: int, ayah: int) -> dict[str, object]:
-    key = (surah, ayah)
-    cached = ayah_payload_cache.get(key)
-    if cached is not None:
-        return cached
-
     words = quran_data.get(f"{surah}:{ayah}", [])
-    payload = {
+    return {
         "surah": surah,
         "ayah": ayah,
         "words": words,
@@ -194,8 +184,6 @@ def _ayah_payload(surah: int, ayah: int) -> dict[str, object]:
             for index in range(len(words))
         ],
     }
-    ayah_payload_cache[key] = payload
-    return payload
 
 
 @asynccontextmanager
@@ -204,8 +192,8 @@ async def lifespan(app: FastAPI):
     global checker, quran_data
     checker = MuaalemChecker(device=load_config().default_device)
     quran_data = load_quran_data()
-    surah_manifest_cache.clear()
-    ayah_payload_cache.clear()
+    _load_surah_manifest.cache_clear()
+    _ayah_payload.cache_clear()
     yield
 
 
