@@ -26,8 +26,8 @@ The app assumes the backend is available at `http://localhost:8000` unless `VITE
 
 Railway should deploy from this folder:
 
-- Root directory: `apps/tajweed-ml/frontend`
+- Root directory: `frontend`
 - Build command: handled by `nixpacks.toml`
 - Start command: handled by `railway.toml`
 
-The frontend is static in practice, but it uses `vite preview` so Railway can serve the built app directly.
+The frontend is static in practice, and production serving uses `node server.mjs` with SPA fallback instead of `vite preview`.
