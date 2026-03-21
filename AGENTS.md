@@ -13,7 +13,7 @@
 2. Commit the changes.
 3. Push the branch to GitHub.
 4. Open or update a PR.
-5. Request review through GitHub when a reviewer surface exists for the repo or the user account can be requested directly.
+5. Request review through GitHub when a reviewer can be requested.
 6. Wait 5 minutes for Gemini or other review suggestions if those review surfaces are available in the current workflow.
 7. Review those suggestions with your own judgment and fix valid issues through GitHub.
 8. Merge through GitHub when ready.
@@ -24,4 +24,4 @@
 - If the user asks to `push`, `ship`, `open PR`, `merge`, `fix comments`, `deploy`, or similar, treat that as GitHub workflow work, not local-only git work.
 - Do not stop after local edits when the user intent is clearly to ship.
 - Do not merge immediately after opening a PR unless the user explicitly says to skip the review wait.
-- Do not skip the GitHub review-request step when a reviewer can be requested.
+- Do not skip requesting a GitHub review when a reviewer is available.
