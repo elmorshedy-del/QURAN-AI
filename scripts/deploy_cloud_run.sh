@@ -59,7 +59,7 @@ prepare_context() {
   cp -R "${APP_ROOT}/server" "${TEMP_CONTEXT}/server"
   cp -R "${APP_ROOT}/data" "${TEMP_CONTEXT}/data"
   mkdir -p "${TEMP_CONTEXT}/audio/husary"
-  cp -R "${APP_ROOT}/audio/husary/words" "${TEMP_CONTEXT}/audio/husary/words"
+  cp -R "${APP_ROOT}/audio/husary/words" "${TEMP_CONTEXT}/audio/husary/"
 }
 
 deploy_service() {
