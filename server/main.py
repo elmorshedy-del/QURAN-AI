@@ -217,6 +217,10 @@ async def recite_ws(websocket: WebSocket):
                             "ayah": current_ayah,
                             "words": words,
                             "total_words": len(words),
+                            "word_audio_urls": [
+                                _served_audio_url(current_surah, current_ayah, index)
+                                for index in range(len(words))
+                            ],
                             "backend": _backend_health_payload(),
                         }
                     )
@@ -250,6 +254,7 @@ async def recite_ws(websocket: WebSocket):
                                         "severity": error.severity,
                                         "expected": error.expected_phoneme,
                                         "predicted": error.predicted_phoneme,
+                                        "audio_url": _served_audio_url(current_surah, current_ayah, error.word_index),
                                     }
                                     for error in errors
                                 ],
@@ -283,6 +288,10 @@ async def recite_ws(websocket: WebSocket):
                             "ayah": current_ayah,
                             "words": words,
                             "total_words": len(words),
+                            "word_audio_urls": [
+                                _served_audio_url(current_surah, current_ayah, index)
+                                for index in range(len(words))
+                            ],
                         }
                     )
             elif "bytes" in data and is_active and checker is not None:

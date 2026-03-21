@@ -141,17 +141,24 @@ export function useRecitation({
               backend: message.backend || null,
             });
             break;
-          case "ready":
+          case "ready": {
+            const readyMessage = {
+              ...message,
+              word_audio_urls: Array.isArray(message.word_audio_urls)
+                ? message.word_audio_urls.map((url) => toAbsoluteUrl(apiBase, url))
+                : [],
+            };
             if (onReady) {
-              onReady(message);
+              onReady(readyMessage);
             }
             emitState({
               status: "ready",
-              message,
+              message: readyMessage,
               socketState: "connected",
-              backend: message.backend || null,
+              backend: readyMessage.backend || null,
             });
             break;
+          }
           case "correction": {
             const correction = {
               ...message,
@@ -173,12 +180,22 @@ export function useRecitation({
             }
             emitState({ status: "correct", message, socketState: "connected" });
             break;
-          case "summary":
+          case "summary": {
+            const summaryMessage = {
+              ...message,
+              errors: Array.isArray(message.errors)
+                ? message.errors.map((error) => ({
+                    ...error,
+                    audio_url: toAbsoluteUrl(apiBase, error.audio_url),
+                  }))
+                : [],
+            };
             if (onSummary) {
-              onSummary(message);
+              onSummary(summaryMessage);
             }
-            emitState({ status: "summary", message, socketState: "connected" });
+            emitState({ status: "summary", message: summaryMessage, socketState: "connected" });
             break;
+          }
           default:
             break;
         }

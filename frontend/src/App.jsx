@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchAyah, fetchHealth, fetchSegmenterHealth } from "./api";
 import { useRecitation } from "./hooks/useRecitation";
@@ -10,35 +10,6 @@ const SURAHS = [
   { number: 112, name: "Al-Ikhlas", nameAr: "الإخلاص", verses: 4, difficulty: "Beginner", juz: 30 },
   { number: 113, name: "Al-Falaq", nameAr: "الفلق", verses: 5, difficulty: "Beginner", juz: 30 },
   { number: 114, name: "An-Nas", nameAr: "الناس", verses: 6, difficulty: "Beginner", juz: 30 },
-];
-
-const CAPABILITIES = [
-  {
-    key: "muaalem",
-    title: "Phoneme-aware correction",
-    titleAr: "تصحيح صوتي واعٍ بالفونيمات",
-    body: "The Muaalem backend listens for phoneme substitutions and maps them back to tajweed and articulation feedback.",
-  },
-  {
-    key: "dsp",
-    title: "DSP rule checks",
-    titleAr: "فحوصات رقمية مباشرة",
-    body: "Madd, ghunnah, and qalqalah stay deterministic with duration, nasal energy, and burst heuristics instead of unnecessary model training.",
-  },
-  {
-    key: "ayah",
-    title: "Ayah-based practice",
-    titleAr: "تدريب على مستوى الآية",
-    body: "The experience is organized around complete ayah context, because the backend is more reliable when it hears connected recitation.",
-  },
-];
-
-const RULES = [
-  { name: "Tafkheem", nameAr: "تفخيم" },
-  { name: "Makhraj", nameAr: "مخرج" },
-  { name: "Madd", nameAr: "مد" },
-  { name: "Ghunnah", nameAr: "غنة" },
-  { name: "Qalqalah", nameAr: "قلقلة" },
 ];
 
 const MAKHARIJ = [
@@ -73,6 +44,22 @@ function persistProgress(progress) {
 
 function formatAyah(words) {
   return (words || []).join(" ");
+}
+
+function ayahCacheKey(surah, ayah) {
+  return `${surah}:${ayah}`;
+}
+
+function buildReviewItems(summary, ayahPayload) {
+  if (!summary?.errors?.length) {
+    return [];
+  }
+  return summary.errors.map((error, index) => ({
+    id: `${error.word_index}-${error.rule || error.error_type}-${index}`,
+    ...error,
+    word_ar: error.word_ar || ayahPayload.words?.[error.word_index] || "",
+    audio_url: error.audio_url || ayahPayload.word_audio_urls?.[error.word_index] || null,
+  }));
 }
 
 function inferDifficultyColor(level) {
@@ -168,17 +155,9 @@ function WaveBars({ active }) {
   );
 }
 
-function RulePill({ label, arabic }) {
-  return (
-    <span className="rule-pill">
-      <strong>{arabic}</strong>
-      <span>{label}</span>
-    </span>
-  );
-}
-
 export default function App() {
   const [view, setView] = useState("home");
+  const [language, setLanguage] = useState("en");
   const [selectedSurah, setSelectedSurah] = useState(SURAHS[0]);
   const [currentAyah, setCurrentAyah] = useState(1);
   const [ayahPayload, setAyahPayload] = useState({ words: [], word_audio_urls: [] });
@@ -192,6 +171,8 @@ export default function App() {
   const [latestSummary, setLatestSummary] = useState(null);
   const [eventFeed, setEventFeed] = useState([]);
   const [progress, setProgress] = useState(loadStoredProgress);
+  const ayahCacheRef = useRef(new Map());
+  const feedCounterRef = useRef(0);
 
   useEffect(() => {
     persistProgress(progress);
@@ -242,16 +223,26 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     async function loadAyahPayload() {
-      setLoadingAyah(true);
+      const cacheKey = ayahCacheKey(selectedSurah.number, currentAyah);
+      const cached = ayahCacheRef.current.get(cacheKey);
+      if (cached) {
+        setAyahPayload(cached);
+        setLoadingAyah(false);
+      } else {
+        setLoadingAyah(true);
+      }
       try {
         const payload = await fetchAyah(selectedSurah.number, currentAyah);
         if (!cancelled) {
+          ayahCacheRef.current.set(cacheKey, payload);
           setAyahPayload(payload);
           setBackendError("");
         }
       } catch (error) {
         if (!cancelled) {
-          setAyahPayload({ words: [], word_audio_urls: [] });
+          if (!cached) {
+            setAyahPayload({ words: [], word_audio_urls: [] });
+          }
           setBackendError(String(error.message || error));
         }
       } finally {
@@ -266,14 +257,49 @@ export default function App() {
     };
   }, [currentAyah, selectedSurah.number]);
 
+  useEffect(() => {
+    if (currentAyah >= selectedSurah.verses) {
+      return undefined;
+    }
+    const nextAyahNumber = currentAyah + 1;
+    const nextKey = ayahCacheKey(selectedSurah.number, nextAyahNumber);
+    if (ayahCacheRef.current.has(nextKey)) {
+      return undefined;
+    }
+    let cancelled = false;
+    fetchAyah(selectedSurah.number, nextAyahNumber)
+      .then((payload) => {
+        if (!cancelled) {
+          ayahCacheRef.current.set(nextKey, payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [currentAyah, selectedSurah.number, selectedSurah.verses]);
+
   const addFeedItem = (item) => {
-    setEventFeed((current) => [item, ...current].slice(0, 8));
+    const id = `${Date.now()}-${feedCounterRef.current}`;
+    feedCounterRef.current += 1;
+    setEventFeed((current) => [{ id, ...item }, ...current].slice(0, 6));
   };
 
   const recitation = useRecitation({
     surah: selectedSurah.number,
     ayah: currentAyah,
     onReady: (message) => {
+      if (Array.isArray(message.words) && message.words.length) {
+        const payload = {
+          words: message.words,
+          word_audio_urls: message.word_audio_urls || [],
+        };
+        ayahCacheRef.current.set(ayahCacheKey(message.surah, message.ayah), payload);
+        if (message.surah === selectedSurah.number && message.ayah === currentAyah) {
+          setAyahPayload(payload);
+          setLoadingAyah(false);
+        }
+      }
       addFeedItem({
         kind: "ready",
         title: "Session ready",
@@ -290,14 +316,7 @@ export default function App() {
         body: message.description,
       });
     },
-    onCorrect: (message) => {
-      addFeedItem({
-        kind: "correct",
-        title: "Correct so far",
-        titleAr: "القراءة سليمة حتى الآن",
-        body: `Word index ${message.word_index} passed the current window.`,
-      });
-    },
+    onCorrect: () => {},
     onSummary: (message) => {
       setLatestSummary(message);
       setLatestCorrection(null);
@@ -309,7 +328,7 @@ export default function App() {
           summaries: [
             {
               score: message.score,
-              errors: message.total_errors,
+              errors: message.total_flagged_words ?? message.total_errors,
               surah: selectedSurah.number,
               ayah: currentAyah,
               createdAt: new Date().toISOString(),
@@ -333,26 +352,58 @@ export default function App() {
   });
 
   const ayahText = useMemo(() => formatAyah(ayahPayload.words), [ayahPayload.words]);
+  const reviewItems = useMemo(() => buildReviewItems(latestSummary, ayahPayload), [ayahPayload, latestSummary]);
+  const flaggedWordIndexes = useMemo(
+    () => new Set(reviewItems.map((item) => item.word_index)),
+    [reviewItems],
+  );
   const difficultyColor = inferDifficultyColor(selectedSurah.difficulty);
   const backendStatus = describeBackendStatus(backendHealth, backendError);
   const segmenterStatus = describeSegmenterStatus(segmenterHealth, segmenterError);
   const socketStatus = describeSocketStatus(sessionState, recitation);
   const audioStatus = describeAudioStatus(recitation);
+  const t = (en, ar) => (language === "ar" ? ar : en);
+
+  const playReference = (url) => {
+    if (!url) {
+      return;
+    }
+    const audio = new Audio(url);
+    audio.play().catch(() => {});
+  };
 
   const nextAyah = () => {
-    setCurrentAyah((current) => Math.min(selectedSurah.verses, current + 1));
+    const nextAyahNumber = Math.min(selectedSurah.verses, currentAyah + 1);
+    const cached = ayahCacheRef.current.get(ayahCacheKey(selectedSurah.number, nextAyahNumber));
+    if (cached) {
+      setAyahPayload(cached);
+      setLoadingAyah(false);
+    } else {
+      setLoadingAyah(true);
+    }
+    setCurrentAyah(nextAyahNumber);
     setLatestCorrection(null);
     setLatestSummary(null);
+    setEventFeed([]);
   };
 
   const previousAyah = () => {
-    setCurrentAyah((current) => Math.max(1, current - 1));
+    const previousAyahNumber = Math.max(1, currentAyah - 1);
+    const cached = ayahCacheRef.current.get(ayahCacheKey(selectedSurah.number, previousAyahNumber));
+    if (cached) {
+      setAyahPayload(cached);
+      setLoadingAyah(false);
+    } else {
+      setLoadingAyah(true);
+    }
+    setCurrentAyah(previousAyahNumber);
     setLatestCorrection(null);
     setLatestSummary(null);
+    setEventFeed([]);
   };
 
   return (
-    <div className="app-shell">
+    <div className={language === "ar" ? "app-shell app-shell--rtl" : "app-shell"}>
       <div className="bg-orb bg-orb--top" />
       <div className="bg-orb bg-orb--side" />
 
@@ -360,102 +411,128 @@ export default function App() {
         <div className="brand-lockup">
           <span className="brand-mark">﷽</span>
           <div>
-            <p className="eyebrow">AI Quran Recitation Coach</p>
+            <p className="eyebrow">{t("AI Quran Recitation Coach", "موجّه تلاوة القرآن بالذكاء الاصطناعي")}</p>
             <h1>الترتيل · Al Tarteel</h1>
           </div>
         </div>
 
-        <nav className="nav-tabs">
-          {[
-            ["home", "Overview"],
-            ["practice", "Practice"],
-            ["makharij", "Makhaarij"],
-            ["journey", "Journey"],
-          ].map(([id, label]) => (
+        <div className="topbar-actions">
+          <nav className="nav-tabs">
+            {[
+              ["home", t("Home", "الرئيسية")],
+              ["practice", t("Practice", "التدريب")],
+              ["makharij", t("Letter sounds", "مخارج الحروف")],
+              ["journey", t("Progress", "التقدم")],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                className={view === id ? "nav-tab nav-tab--active" : "nav-tab"}
+                onClick={() => setView(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          <div className="lang-switch" aria-label="Language switch">
             <button
-              key={id}
-              className={view === id ? "nav-tab nav-tab--active" : "nav-tab"}
-              onClick={() => setView(id)}
+              type="button"
+              className={language === "en" ? "lang-switch__button lang-switch__button--active" : "lang-switch__button"}
+              onClick={() => setLanguage("en")}
             >
-              {label}
+              EN
             </button>
-          ))}
-        </nav>
+            <button
+              type="button"
+              className={language === "ar" ? "lang-switch__button lang-switch__button--active" : "lang-switch__button"}
+              onClick={() => setLanguage("ar")}
+            >
+              AR
+            </button>
+          </div>
+        </div>
       </header>
 
       {view === "home" && (
         <main className="page page--home">
           <section className="hero-card">
             <div className="hero-copy">
-              <p className="eyebrow">Recite with context, not just isolated clips</p>
-              <h2>Build fluent tilawah with bilingual guidance and real feedback.</h2>
+              <p className="eyebrow">{t("One ayah at a time", "آية واحدة في كل مرة")}</p>
+              <h2>{t("Recite, hear what needs revision, then repeat with a clear example.", "اقرأ، اسمع ما يحتاج مراجعة، ثم أعد القراءة مع مثال واضح.")}</h2>
               <p className="hero-text">
-                Practice complete ayahs, hear correction audio, and review tajweed issues in English
-                and Arabic. The interface is designed around what the backend actually does well:
-                connected recitation, rule-specific feedback, and clear playback loops.
+                {t(
+                  "The current website helps you practice a single ayah, stop, review the words that need work, and replay the Husary example for those words.",
+                  "الموقع الحالي يساعدك على تدريب آية واحدة، ثم التوقف، ومراجعة الكلمات التي تحتاج عملاً، وتشغيل مثال الحصري لهذه الكلمات."
+                )}
               </p>
               <div className="hero-actions">
                 <button className="button button--primary" onClick={() => setView("practice")}>
-                  Open the recitation studio
+                  {t("Start practicing now", "ابدأ التدريب الآن")}
                 </button>
                 <button className="button button--ghost" onClick={() => setView("makharij")}>
-                  Explore articulation points
+                  {t("Open letter sounds guide", "افتح دليل مخارج الحروف")}
                 </button>
               </div>
             </div>
 
-            <aside className="hero-status">
-              <div className="status-card">
-                <span className="status-label">Backend</span>
-                <strong>{backendStatus.label}</strong>
-                <p>{backendStatus.detail}</p>
+            <aside className="hero-guide">
+              <div className="hero-guide__card">
+                <span className="status-label">{t("What it does now", "ما الذي يفعله الآن")}</span>
+                <strong>{t("Guided ayah practice", "تدريب موجّه على الآيات")}</strong>
+                <p>{t("You recite one ayah, get a short review list, and hear the Husary word again where needed.", "تقرأ آية واحدة، ثم تحصل على قائمة مراجعة قصيرة، وتسمع كلمة الحصري مرة أخرى عند الحاجة.")}</p>
               </div>
-              <div className="status-card">
-                <span className="status-label">Segmenter</span>
-                <strong>{segmenterStatus.label}</strong>
-                <p>{segmenterStatus.detail}</p>
+              <div className="hero-guide__card">
+                <span className="status-label">{t("What it does not do yet", "ما الذي لا يفعله بعد")}</span>
+                <strong>{t("Not full Quran coverage yet", "ليس تغطية كاملة لكل القرآن بعد")}</strong>
+                <p>{t("Some surahs are still being tightened for production, so the strongest experience today is on the guided paths already wired end to end.", "بعض السور ما زالت قيد التشديد للإطلاق، لذلك أقوى تجربة اليوم هي في المسارات الموصولة بالكامل من البداية إلى النهاية.")}</p>
               </div>
-              <div className="status-card">
-                <span className="status-label">Recitation socket</span>
-                <strong>{socketStatus.label}</strong>
-                <p>{socketStatus.detail}</p>
-              </div>
-              <div className="status-card">
-                <span className="status-label">Audio capture</span>
-                <strong>{audioStatus.label}</strong>
-                <p>{audioStatus.detail}</p>
-                <small>{recitation.isRecording ? `Input level ${Math.max(1, Math.round(recitation.audioLevel * 900))}%` : "Mic idle"}</small>
+              <div className="hero-guide__card">
+                <span className="status-label">{t("What future versions will add", "ما الذي ستضيفه النسخ القادمة")}</span>
+                <strong>{t("Smoother full-surah reading", "تلاوة أسلس للسور كاملة")}</strong>
+                <p>{t("Future versions will support more continuous reading, stronger non-Fatiha coverage, and clearer teacher-style progress tracking.", "النسخ القادمة ستدعم تلاوة أكثر استمرارية، وتغطية أقوى خارج الفاتحة، وتتبعاً أوضح للتقدم بأسلوب المعلم.")}</p>
               </div>
             </aside>
           </section>
 
           <section className="capability-grid">
-            {CAPABILITIES.map((item) => (
-              <article key={item.key} className="capability-card">
-                <span className="capability-ar">{item.titleAr}</span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-              </article>
-            ))}
+            <article className="capability-card">
+              <span className="capability-ar">{t("1", "١")}</span>
+              <h3>{t("Read the ayah", "اقرأ الآية")}</h3>
+              <p>{t("Open practice mode, choose a surah, and read the current ayah from start to finish in one pass.", "افتح وضع التدريب، واختر السورة، ثم اقرأ الآية الحالية من البداية إلى النهاية في مرور واحد.")}</p>
+            </article>
+            <article className="capability-card">
+              <span className="capability-ar">{t("2", "٢")}</span>
+              <h3>{t("Review flagged words", "راجع الكلمات المعلّمة")}</h3>
+              <p>{t("After you stop, the app turns the result into a short revision queue instead of a flood of raw technical messages.", "بعد التوقف، يحول التطبيق النتيجة إلى قائمة مراجعة قصيرة بدلاً من سيل من الرسائل التقنية الخام.")}</p>
+            </article>
+            <article className="capability-card">
+              <span className="capability-ar">{t("3", "٣")}</span>
+              <h3>{t("Replay Husary and repeat", "استمع للحصري ثم أعد القراءة")}</h3>
+              <p>{t("Use the built-in Husary playback for the exact word that needs revision, then recite the full ayah again smoothly.", "استخدم تشغيل الحصري المدمج للكلمة نفسها التي تحتاج مراجعة، ثم أعد تلاوة الآية كاملة بسلاسة.")}</p>
+            </article>
           </section>
 
           <section className="overview-grid">
             <article className="panel">
               <div className="panel-heading">
-                <h3>Supported focus areas</h3>
-                <p>مدروس للقراءة المتصلة والتغذية الراجعة الفورية</p>
+                <h3>{t("Current focus", "التركيز الحالي")}</h3>
+                <p>{t("Straightforward, user-facing practice flow", "تجربة بسيطة وواضحة للمستخدم")}</p>
               </div>
-              <div className="rule-row">
-                {RULES.map((rule) => (
-                  <RulePill key={rule.name} label={rule.name} arabic={rule.nameAr} />
-                ))}
+              <div className="simple-list">
+                <div className="simple-list__item">
+                  <strong>{t("What you will see", "ما الذي ستراه")}</strong>
+                  <p>{t("The current ayah, a clear live note if something important happens, and a short revision queue after you stop.", "الآية الحالية، وملاحظة مباشرة واضحة إذا ظهر شيء مهم، ثم قائمة مراجعة قصيرة بعد التوقف.")}</p>
+                </div>
+                <div className="simple-list__item">
+                  <strong>{t("What you will not see", "ما الذي لن تراه")}</strong>
+                  <p>{t("Dense model jargon, long phoneme dumps, or health-check details mixed into the main reading experience.", "لن ترى مصطلحات نماذج كثيفة، أو سطور فونيمات طويلة، أو تفاصيل فحص الصحة داخل تجربة القراءة الأساسية.")}</p>
+                </div>
               </div>
             </article>
 
             <article className="panel">
               <div className="panel-heading">
-                <h3>Ready-to-practice surahs</h3>
-                <p>Select a guided path, then move into the live studio.</p>
+                <h3>{t("Start with these guided surahs", "ابدأ بهذه السور الموجّهة")}</h3>
+                <p>{t("Choose a path that is already wired for the current practice flow.", "اختر مساراً موصولاً بالفعل مع تجربة التدريب الحالية.")}</p>
               </div>
               <div className="surah-list">
                 {SURAHS.slice(0, 4).map((surah) => (
@@ -465,6 +542,7 @@ export default function App() {
                     onClick={() => {
                       setSelectedSurah(surah);
                       setCurrentAyah(1);
+                      setEventFeed([]);
                       setView("practice");
                     }}
                   >
@@ -483,6 +561,36 @@ export default function App() {
               </div>
             </article>
           </section>
+
+          <section className="panel">
+            <div className="panel-heading">
+              <h3>{t("Debug panel", "لوحة التصحيح")}</h3>
+              <p>{t("Model readiness and connection details for troubleshooting only.", "جاهزية النماذج وتفاصيل الاتصال للتشخيص فقط.")}</p>
+            </div>
+            <div className="debug-grid">
+              <div className="status-card">
+                <span className="status-label">{t("Backend", "الخلفية")}</span>
+                <strong>{backendStatus.label}</strong>
+                <p>{backendStatus.detail}</p>
+              </div>
+              <div className="status-card">
+                <span className="status-label">{t("Segmenter", "المقطّع")}</span>
+                <strong>{segmenterStatus.label}</strong>
+                <p>{segmenterStatus.detail}</p>
+              </div>
+              <div className="status-card">
+                <span className="status-label">{t("Socket", "الاتصال")}</span>
+                <strong>{socketStatus.label}</strong>
+                <p>{socketStatus.detail}</p>
+              </div>
+              <div className="status-card">
+                <span className="status-label">{t("Audio", "الصوت")}</span>
+                <strong>{audioStatus.label}</strong>
+                <p>{audioStatus.detail}</p>
+                <small>{recitation.isRecording ? `Input level ${Math.max(1, Math.round(recitation.audioLevel * 900))}%` : t("Mic idle", "الميكروفون غير نشط")}</small>
+              </div>
+            </div>
+          </section>
         </main>
       )}
 
@@ -491,19 +599,21 @@ export default function App() {
           <section className="practice-layout">
             <aside className="practice-sidebar panel">
               <div className="panel-heading">
-                <h3>Surah Library</h3>
-                <p>السور المختارة للتدريب</p>
+                <h3>{t("Surah library", "مكتبة السور")}</h3>
+                <p>{t("Choose a guided surah for practice", "اختر سورة موجّهة للتدريب")}</p>
               </div>
               <div className="surah-list">
                 {SURAHS.map((surah) => (
                   <button
                     key={surah.number}
                     className={selectedSurah.number === surah.number ? "surah-row surah-row--active" : "surah-row"}
+                    disabled={recitation.isRecording}
                     onClick={() => {
                       setSelectedSurah(surah);
                       setCurrentAyah(1);
                       setLatestCorrection(null);
                       setLatestSummary(null);
+                      setEventFeed([]);
                     }}
                   >
                     <div>
@@ -525,12 +635,12 @@ export default function App() {
               <article className="panel ayah-panel">
                 <div className="practice-header">
                   <div>
-                    <span className="eyebrow">Practice Studio</span>
+                    <span className="eyebrow">{t("Practice studio", "استوديو التدريب")}</span>
                     <h2>
                       {selectedSurah.nameAr} · {selectedSurah.name}
                     </h2>
                     <p>
-                      Ayah {currentAyah} of {selectedSurah.verses}
+                      {t(`Ayah ${currentAyah} of ${selectedSurah.verses}`, `الآية ${currentAyah} من ${selectedSurah.verses}`)}
                     </p>
                   </div>
                   <div className="practice-meta">
@@ -538,64 +648,72 @@ export default function App() {
                       {selectedSurah.difficulty}
                     </span>
                     <span className="badge">
-                      {recitation.isConnected ? "Live socket ready" : "Socket idle"}
+                      {recitation.isConnected ? t("Live session ready", "الجلسة المباشرة جاهزة") : t("Session idle", "الجلسة غير نشطة")}
                     </span>
                   </div>
                 </div>
 
                 <div className="ayah-card">
                   {loadingAyah ? (
-                    <p className="muted">Loading ayah text…</p>
+                    <p className="muted">{t("Loading ayah text…", "جاري تحميل نص الآية…")}</p>
                   ) : ayahText ? (
                     <>
                       <p className="ayah-ar">{ayahText}</p>
+                      <p className="muted">{t("Tap any word chip to hear the Husary reference. Flagged words will be marked for revision here after each pass.", "اضغط على أي كلمة لسماع مثال الحصري. الكلمات التي تحتاج مراجعة ستظهر هنا بعد كل محاولة.")}</p>
                       <div className="word-grid">
                         {ayahPayload.words.map((word, index) => (
-                          <span key={`${word}-${index}`} className="word-chip">
+                          <button
+                            type="button"
+                            key={`${word}-${index}`}
+                            className={flaggedWordIndexes.has(index) ? "word-chip word-chip--flagged" : "word-chip"}
+                            onClick={() => playReference(ayahPayload.word_audio_urls?.[index])}
+                            disabled={!ayahPayload.word_audio_urls?.[index]}
+                          >
                             <span>{index + 1}</span>
                             <strong>{word}</strong>
-                          </span>
+                            {flaggedWordIndexes.has(index) ? <small>{t("Review", "مراجعة")}</small> : <small>{t("Husary", "الحصري")}</small>}
+                          </button>
                         ))}
                       </div>
                     </>
                   ) : (
-                    <p className="muted">No ayah data returned for this selection.</p>
+                    <p className="muted">{t("No ayah data returned for this selection.", "لا توجد بيانات لهذه الآية حالياً.")}</p>
                   )}
                 </div>
 
                 <div className="control-row">
-                  <button className="button button--ghost" onClick={previousAyah} disabled={currentAyah === 1}>
-                    Previous ayah
+                  <button className="button button--ghost" onClick={previousAyah} disabled={currentAyah === 1 || recitation.isRecording}>
+                    {t("Previous ayah", "الآية السابقة")}
                   </button>
                   {!recitation.isRecording ? (
                     <button className="button button--primary" onClick={recitation.startRecording}>
-                      Start live recitation
+                      {t("Start live recitation", "ابدأ التلاوة المباشرة")}
                     </button>
                   ) : (
                     <button className="button button--danger" onClick={recitation.stopRecording}>
-                      Stop and review
+                      {t("Stop and review", "أوقف وراجع")}
                     </button>
                   )}
                   <button
                     className="button button--ghost"
                     onClick={nextAyah}
-                    disabled={currentAyah === selectedSurah.verses}
+                    disabled={currentAyah === selectedSurah.verses || recitation.isRecording}
                   >
-                    Next ayah
+                    {t("Next ayah", "الآية التالية")}
                   </button>
                 </div>
 
                 <div className="live-strip">
                   <div>
-                    <span className="status-label">Session state</span>
+                    <span className="status-label">{t("Session state", "حالة الجلسة")}</span>
                     <strong>{sessionState.status || "idle"}</strong>
                   </div>
                   <div>
-                    <span className="status-label">Socket</span>
+                    <span className="status-label">{t("Connection", "الاتصال")}</span>
                     <strong>{socketStatus.label}</strong>
                   </div>
                   <div>
-                    <span className="status-label">Audio</span>
+                    <span className="status-label">{t("Mic", "الميكروفون")}</span>
                     <strong>{audioStatus.label}</strong>
                   </div>
                 </div>
@@ -603,74 +721,132 @@ export default function App() {
                 <WaveBars active={recitation.isRecording} />
               </article>
 
-              <div className="feedback-grid">
-                <article className="panel">
+              <div className="feedback-grid feedback-grid--practice">
+                <article className="panel review-panel">
                   <div className="panel-heading">
-                    <h3>Latest correction</h3>
-                    <p>آخر ملاحظة أثناء التلاوة</p>
-                  </div>
-                  {latestCorrection ? (
-                    <div className="feedback-card feedback-card--warning">
-                      <div className="feedback-topline">
-                        <strong>{latestCorrection.word_ar || "Correction"}</strong>
-                        <span>{latestCorrection.rule || latestCorrection.error_type}</span>
-                      </div>
-                      <p>{latestCorrection.description}</p>
-                      {latestCorrection.audio_url ? (
-                        <audio controls src={latestCorrection.audio_url} className="audio-player">
-                          Your browser does not support audio playback.
-                        </audio>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <p className="muted">No correction yet. Start reciting to receive live feedback.</p>
-                  )}
-                </article>
-
-                <article className="panel">
-                  <div className="panel-heading">
-                    <h3>Latest summary</h3>
-                    <p>ملخص الأداء بعد الإيقاف</p>
+                    <h3>{t("Revision queue", "قائمة المراجعة")}</h3>
+                    <p>{t("Words that need work, with direct Husary playback", "الكلمات التي تحتاج عملاً مع تشغيل مباشر للحصري")}</p>
                   </div>
                   {latestSummary ? (
-                    <div className="summary-block">
-                      <div className="score-ring">
-                        <span>{latestSummary.score}</span>
+                    reviewItems.length ? (
+                      <>
+                        <div className="summary-block">
+                          <div className="score-ring">
+                            <span>{latestSummary.score}</span>
+                          </div>
+                          <div>
+                            <strong>{t(`${reviewItems.length} words need revision`, `${reviewItems.length} كلمات تحتاج مراجعة`)}</strong>
+                            <p>{t("Listen to the Husary word, then repeat the full ayah from the start with the same flow.", "استمع إلى كلمة الحصري، ثم أعد الآية كاملة من البداية بنفس السلاسة.")}</p>
+                          </div>
+                        </div>
+                        <div className="review-list">
+                          {reviewItems.map((item) => (
+                            <div key={item.id} className="review-item">
+                              <div className="review-head">
+                                <div>
+                                  <strong>{item.word_ar || `Word ${item.word_index + 1}`}</strong>
+                                  <span>{item.rule || item.error_type}</span>
+                                </div>
+                                <span className={`review-severity review-severity--${item.severity || "medium"}`}>
+                                  {item.severity || "medium"}
+                                </span>
+                              </div>
+                              <p>{item.description}</p>
+                              <div className="review-actions">
+                                <button
+                                  type="button"
+                                  className="button button--primary button--compact"
+                                  onClick={() => playReference(item.audio_url)}
+                                  disabled={!item.audio_url}
+                                >
+                                  {t("Play Husary word", "شغّل كلمة الحصري")}
+                                </button>
+                                <span className="review-meta">{t(`Word ${item.word_index + 1}`, `الكلمة ${item.word_index + 1}`)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="review-success">
+                        <div className="summary-block">
+                          <div className="score-ring">
+                            <span>{latestSummary.score}</span>
+                          </div>
+                          <div>
+                            <strong>{t("Ayah passed cleanly", "تمت الآية بشكل سليم")}</strong>
+                            <p>{t("No rule-level issues were flagged in this pass. Move to the next ayah or repeat for stability.", "لم تُرصد ملاحظات على مستوى القواعد في هذه المحاولة. انتقل إلى الآية التالية أو أعدها للتثبيت.")}</p>
+                          </div>
+                        </div>
+                        <div className="review-actions">
+                          <button
+                            type="button"
+                            className="button button--primary"
+                            onClick={nextAyah}
+                            disabled={currentAyah === selectedSurah.verses}
+                          >
+                            {t("Load next ayah", "حمّل الآية التالية")}
+                          </button>
+                        </div>
                       </div>
-                      <div>
-                        <strong>
-                          {latestSummary.total_flagged_words ?? latestSummary.total_errors} words need review
-                        </strong>
-                        <p>Review the flagged Quran-rule notes below, then repeat the ayah smoothly from the start.</p>
-                      </div>
-                    </div>
+                    )
                   ) : (
-                    <p className="muted">The backend will send a summary after you stop recording.</p>
+                    <p className="muted">{t("Stop the recitation once to generate a clear review queue with Husary playback.", "أوقف التلاوة مرة واحدة لتوليد قائمة مراجعة واضحة مع تشغيل الحصري.")}</p>
                   )}
                 </article>
-              </div>
 
-              <article className="panel">
-                <div className="panel-heading">
-                  <h3>Event stream</h3>
-                  <p>Live backend messages from the WebSocket session</p>
-                </div>
-                <div className="feed-list">
-                  {eventFeed.length ? (
-                    eventFeed.map((item, index) => (
-                      <div key={`${item.kind}-${index}`} className="feed-item">
-                        <div className="feed-head">
-                          <strong>{item.title}</strong>
-                          <span>{item.titleAr}</span>
+                <div className="practice-sidepanels">
+                  <article className="panel">
+                    <div className="panel-heading">
+                      <h3>{t("Live note", "الملاحظة المباشرة")}</h3>
+                      <p>{t("Only the most important current note", "أهم ملاحظة حالية فقط")}</p>
+                    </div>
+                    {latestCorrection ? (
+                      <div className="feedback-card feedback-card--warning">
+                        <div className="feedback-topline">
+                          <strong>{latestCorrection.word_ar || "Correction"}</strong>
+                          <span>{latestCorrection.rule || latestCorrection.error_type}</span>
                         </div>
-                        <p>{item.body}</p>
+                        <p>{latestCorrection.description}</p>
+                        <div className="review-actions">
+                          <button
+                            type="button"
+                            className="button button--ghost button--compact"
+                            onClick={() => playReference(latestCorrection.audio_url)}
+                            disabled={!latestCorrection.audio_url}
+                          >
+                            {t("Play Husary word", "شغّل كلمة الحصري")}
+                          </button>
+                        </div>
                       </div>
-                    ))
-                  ) : (
-                    <p className="muted">No session events yet.</p>
-                  )}
+                    ) : (
+                      <p className="muted">{t("No live correction is active. Start reciting to hear the first important note only.", "لا توجد ملاحظة مباشرة حالياً. ابدأ التلاوة لسماع أول ملاحظة مهمة فقط.")}</p>
+                    )}
+                  </article>
+
+                  <article className="panel">
+                    <div className="panel-heading">
+                      <h3>{t("Session log", "سجل الجلسة")}</h3>
+                      <p>{t("A short timeline of the current pass", "تسلسل مختصر للمحاولة الحالية")}</p>
+                    </div>
+                    <div className="feed-list">
+                      {eventFeed.length ? (
+                        eventFeed.map((item) => (
+                          <div key={item.id} className="feed-item">
+                            <div className="feed-head">
+                              <strong>{item.title}</strong>
+                              <span>{item.titleAr}</span>
+                            </div>
+                            <p>{item.body}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="muted">{t("No session events yet.", "لا توجد أحداث للجلسة بعد.")}</p>
+                      )}
+                    </div>
+                  </article>
                 </div>
-              </article>
+              </div>
             </section>
           </section>
         </main>
@@ -680,8 +856,8 @@ export default function App() {
         <main className="page">
           <section className="panel">
             <div className="panel-heading">
-              <h2>Makhaarij Reference</h2>
-              <p>مخارج الحروف الأساسية المرتبطة بالتغذية الراجعة الحالية</p>
+              <h2>{t("Letter sounds guide", "دليل مخارج الحروف")}</h2>
+              <p>{t("A simple reference for the core letter sounds used in the current feedback.", "مرجع بسيط لأهم مخارج الحروف المستخدمة في الملاحظات الحالية.")}</p>
             </div>
             <div className="makharij-grid">
               {MAKHARIJ.map((item) => (
@@ -704,29 +880,29 @@ export default function App() {
           <section className="journey-grid">
             <article className="panel">
               <div className="panel-heading">
-                <h2>Practice Journey</h2>
-                <p>ملخص جلساتك الأخيرة</p>
+                <h2>{t("Practice progress", "تقدم التدريب")}</h2>
+                <p>{t("A simple view of your recent sessions", "عرض بسيط لجلساتك الأخيرة")}</p>
               </div>
               <div className="metrics-grid">
                 <div className="metric-card">
                   <strong>{progress.sessions}</strong>
-                  <span>Sessions</span>
+                  <span>{t("Sessions", "الجلسات")}</span>
                 </div>
                 <div className="metric-card">
                   <strong>{progress.totalMinutes}</strong>
-                  <span>Tracked minutes</span>
+                  <span>{t("Tracked minutes", "الدقائق المسجّلة")}</span>
                 </div>
                 <div className="metric-card">
                   <strong>{progress.bestScore}</strong>
-                  <span>Best score</span>
+                  <span>{t("Best score", "أفضل نتيجة")}</span>
                 </div>
               </div>
             </article>
 
             <article className="panel">
               <div className="panel-heading">
-                <h2>Recent summaries</h2>
-                <p>آخر الجلسات المحفوظة محلياً</p>
+                <h2>{t("Recent summaries", "الملخصات الأخيرة")}</h2>
+                <p>{t("Saved locally on this device", "محفوظة محلياً على هذا الجهاز")}</p>
               </div>
               <div className="feed-list">
                 {progress.summaries.length ? (
@@ -742,7 +918,7 @@ export default function App() {
                     </div>
                   ))
                 ) : (
-                  <p className="muted">No local summaries yet. Complete one recording session to populate this panel.</p>
+                  <p className="muted">{t("No local summaries yet. Complete one recording session to populate this panel.", "لا توجد ملخصات محلية بعد. أكمل جلسة تسجيل واحدة لملء هذه اللوحة.")}</p>
                 )}
               </div>
             </article>
