@@ -53,12 +53,25 @@ def _rule_name_parts(rule: object | None) -> tuple[str, str]:
 def _map_tajweed_rule(rule_name_en: str) -> tuple[str, str]:
     lowered = rule_name_en.lower()
     if "madd" in lowered:
-        return "madd", "madd"
+        return "madd", "Madd"
     if "ghonn" in lowered or "ghunn" in lowered:
-        return "ghunnah", "ghunnah"
+        return "ghunnah", "Ghunnah"
     if "qalqalah" in lowered:
-        return "qalqalah", "qalqalah"
-    return "tajweed", lowered.replace(" ", "_") or "tajweed"
+        return "qalqalah", "Qalqalah"
+    if "ikhfa" in lowered:
+        return "tajweed", "Ikhfa"
+    if "idgham" in lowered and ("ghunn" in lowered or "ghonn" in lowered):
+        return "tajweed", "Idgham with Ghunnah"
+    if "idgham" in lowered:
+        return "tajweed", "Idgham"
+    if "iqlab" in lowered:
+        return "tajweed", "Iqlab"
+    if "izhar" in lowered:
+        return "tajweed", "Izhar"
+    if "waqf" in lowered:
+        return "tajweed", "Waqf"
+    cleaned = " ".join(rule_name_en.split()).strip()
+    return "tajweed", cleaned or "Tajweed"
 
 
 TAFKHEEM_ERRORS = {
@@ -103,6 +116,8 @@ VOWEL_ERRORS = {
     ("i", "iː"): "Short vowel where madd expected - elongate",
     ("u", "uː"): "Short vowel where madd expected - elongate",
 }
+
+SUPPORTED_RULE_ERROR_TYPES = {"tafkheem", "makhraj", "madd", "ghunnah", "qalqalah", "tajweed"}
 
 
 def classify_phoneme_error(predicted: str, expected: str) -> tuple[str, str, str]:
@@ -150,7 +165,26 @@ def _user_rule_label(error_type: str) -> str:
     return mapping.get(error_type, "Pronunciation")
 
 
-def _user_safe_description(error_type: str, expected: str, word: str) -> str:
+def _user_safe_tajweed_description(rule: str, word: str) -> str:
+    lowered = rule.lower()
+    if "ikhfa" in lowered:
+        return "Hide the noon or tanween softly with clear ghunnah before the next letter."
+    if "idgham with ghunnah" in lowered:
+        return "Merge the sound into the next letter and keep the nasal sound clear."
+    if "idgham" in lowered:
+        return "Merge the sound more smoothly into the following letter."
+    if "iqlab" in lowered:
+        return "Turn the noon or tanween into a hidden meem with ghunnah before baa."
+    if "izhar" in lowered:
+        return "Pronounce the noon or tanween clearly without merging or hiding it."
+    if "waqf" in lowered:
+        return "Check the stopping rule here and match the reference pause more closely."
+    if word:
+        return f"Check the {rule} in {word} and match the reference recitation."
+    return f"Check the {rule} here and match the reference recitation."
+
+
+def _user_safe_description(error_type: str, expected: str, word: str, rule: str | None = None) -> str:
     if error_type == "makhraj":
         return "Check the articulation point of this word and compare it with the reference recitation."
     if error_type == "tafkheem":
@@ -161,6 +195,8 @@ def _user_safe_description(error_type: str, expected: str, word: str) -> str:
         return "Keep the nasal sound clear and steady in this word."
     if error_type == "qalqalah":
         return "Give the qalqalah letter a clearer bounce in this word."
+    if error_type == "tajweed":
+        return _user_safe_tajweed_description(rule or "tajweed rule", word)
     if error_type == "vowel":
         return "Check the short vowel in this word and recite it more carefully."
     if error_type == "extra":
@@ -449,6 +485,8 @@ class MuaalemChecker:
         seen: set[tuple[object, ...]] = set()
         for error in results:
             word = words[error.word_index] if 0 <= error.word_index < len(words) else ""
+            if error.error_type not in SUPPORTED_RULE_ERROR_TYPES:
+                continue
             if (
                 error.error_type == "missing"
                 and error.predicted_phoneme == "(skipped)"
@@ -474,8 +512,13 @@ class MuaalemChecker:
                     expected_phoneme=error.expected_phoneme,
                     predicted_phoneme=error.predicted_phoneme,
                     error_type=error.error_type,
-                    rule=_user_rule_label(error.error_type),
-                    description_en=_user_safe_description(error.error_type, error.expected_phoneme, word),
+                    rule=error.rule if error.error_type == "tajweed" and error.rule else _user_rule_label(error.error_type),
+                    description_en=_user_safe_description(
+                        error.error_type,
+                        error.expected_phoneme,
+                        word,
+                        error.rule,
+                    ),
                     description_ar=error.description_ar,
                     severity=error.severity,
                     confidence=error.confidence,
