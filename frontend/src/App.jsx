@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchAyah, fetchHealth, fetchSegmenterHealth } from "./api";
 import { useRecitation } from "./hooks/useRecitation";
@@ -171,8 +171,49 @@ export default function App() {
   const [latestSummary, setLatestSummary] = useState(null);
   const [eventFeed, setEventFeed] = useState([]);
   const [progress, setProgress] = useState(loadStoredProgress);
+  const [cacheVersion, setCacheVersion] = useState(0);
   const ayahCacheRef = useRef(new Map());
+  const ayahRequestCacheRef = useRef(new Map());
   const feedCounterRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const storeAyahPayload = useCallback((surah, ayah, payload) => {
+    ayahCacheRef.current.set(ayahCacheKey(surah, ayah), payload);
+    if (mountedRef.current) {
+      setCacheVersion((current) => current + 1);
+    }
+    return payload;
+  }, []);
+
+  const primeAyahPayload = useCallback(
+    (surah, ayah) => {
+      const key = ayahCacheKey(surah, ayah);
+      const cached = ayahCacheRef.current.get(key);
+      if (cached) {
+        return Promise.resolve(cached);
+      }
+
+      const inFlight = ayahRequestCacheRef.current.get(key);
+      if (inFlight) {
+        return inFlight;
+      }
+
+      const request = fetchAyah(surah, ayah)
+        .then((payload) => storeAyahPayload(surah, ayah, payload))
+        .finally(() => {
+          ayahRequestCacheRef.current.delete(key);
+        });
+      ayahRequestCacheRef.current.set(key, request);
+      return request;
+    },
+    [storeAyahPayload],
+  );
 
   useEffect(() => {
     persistProgress(progress);
@@ -232,9 +273,8 @@ export default function App() {
         setLoadingAyah(true);
       }
       try {
-        const payload = await fetchAyah(selectedSurah.number, currentAyah);
+        const payload = await primeAyahPayload(selectedSurah.number, currentAyah);
         if (!cancelled) {
-          ayahCacheRef.current.set(cacheKey, payload);
           setAyahPayload(payload);
           setBackendError("");
         }
@@ -255,29 +295,20 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentAyah, selectedSurah.number]);
+  }, [currentAyah, primeAyahPayload, selectedSurah.number]);
 
   useEffect(() => {
-    if (currentAyah >= selectedSurah.verses) {
+    const candidates = [currentAyah + 1, currentAyah + 2].filter((ayahNumber) => ayahNumber <= selectedSurah.verses);
+    if (!candidates.length) {
       return undefined;
     }
-    const nextAyahNumber = currentAyah + 1;
-    const nextKey = ayahCacheKey(selectedSurah.number, nextAyahNumber);
-    if (ayahCacheRef.current.has(nextKey)) {
-      return undefined;
-    }
-    let cancelled = false;
-    fetchAyah(selectedSurah.number, nextAyahNumber)
-      .then((payload) => {
-        if (!cancelled) {
-          ayahCacheRef.current.set(nextKey, payload);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [currentAyah, selectedSurah.number, selectedSurah.verses]);
+    void Promise.all(
+      candidates.map((ayahNumber) =>
+        primeAyahPayload(selectedSurah.number, ayahNumber).catch(() => null),
+      ),
+    );
+    return undefined;
+  }, [currentAyah, primeAyahPayload, selectedSurah.number, selectedSurah.verses]);
 
   const addFeedItem = (item) => {
     const id = `${Date.now()}-${feedCounterRef.current}`;
@@ -294,7 +325,7 @@ export default function App() {
           words: message.words,
           word_audio_urls: message.word_audio_urls || [],
         };
-        ayahCacheRef.current.set(ayahCacheKey(message.surah, message.ayah), payload);
+        storeAyahPayload(message.surah, message.ayah, payload);
         if (message.surah === selectedSurah.number && message.ayah === currentAyah) {
           setAyahPayload(payload);
           setLoadingAyah(false);
@@ -357,6 +388,21 @@ export default function App() {
     () => new Set(reviewItems.map((item) => item.word_index)),
     [reviewItems],
   );
+  const nextAyahNumber = useMemo(
+    () => (currentAyah < selectedSurah.verses ? currentAyah + 1 : null),
+    [currentAyah, selectedSurah.verses],
+  );
+  const nextAyahPayload = useMemo(
+    () =>
+      nextAyahNumber === null
+        ? null
+        : ayahCacheRef.current.get(ayahCacheKey(selectedSurah.number, nextAyahNumber)) || null,
+    [cacheVersion, nextAyahNumber, selectedSurah.number],
+  );
+  const nextAyahText = useMemo(
+    () => formatAyah(nextAyahPayload?.words || []),
+    [nextAyahPayload],
+  );
   const difficultyColor = inferDifficultyColor(selectedSurah.difficulty);
   const backendStatus = describeBackendStatus(backendHealth, backendError);
   const segmenterStatus = describeSegmenterStatus(segmenterHealth, segmenterError);
@@ -374,14 +420,20 @@ export default function App() {
 
   const nextAyah = () => {
     const nextAyahNumber = Math.min(selectedSurah.verses, currentAyah + 1);
+    if (nextAyahNumber === currentAyah) {
+      return;
+    }
     const cached = ayahCacheRef.current.get(ayahCacheKey(selectedSurah.number, nextAyahNumber));
     if (cached) {
       setAyahPayload(cached);
       setLoadingAyah(false);
     } else {
       setLoadingAyah(true);
+      void primeAyahPayload(selectedSurah.number, nextAyahNumber).catch(() => {});
     }
-    setCurrentAyah(nextAyahNumber);
+    startTransition(() => {
+      setCurrentAyah(nextAyahNumber);
+    });
     setLatestCorrection(null);
     setLatestSummary(null);
     setEventFeed([]);
@@ -389,14 +441,20 @@ export default function App() {
 
   const previousAyah = () => {
     const previousAyahNumber = Math.max(1, currentAyah - 1);
+    if (previousAyahNumber === currentAyah) {
+      return;
+    }
     const cached = ayahCacheRef.current.get(ayahCacheKey(selectedSurah.number, previousAyahNumber));
     if (cached) {
       setAyahPayload(cached);
       setLoadingAyah(false);
     } else {
       setLoadingAyah(true);
+      void primeAyahPayload(selectedSurah.number, previousAyahNumber).catch(() => {});
     }
-    setCurrentAyah(previousAyahNumber);
+    startTransition(() => {
+      setCurrentAyah(previousAyahNumber);
+    });
     setLatestCorrection(null);
     setLatestSummary(null);
     setEventFeed([]);
@@ -511,6 +569,19 @@ export default function App() {
             </article>
           </section>
 
+          <section className="home-band">
+            <div className="home-band__column">
+              <span className="status-label">{t("Best current use", "أفضل استخدام حالياً")}</span>
+              <strong>{t("Guided ayah-by-ayah practice", "تدريب موجّه آية بآية")}</strong>
+              <p>{t("This is the strongest flow today: load one ayah, recite once, stop, review the marked words, then repeat with Husary playback.", "هذا هو المسار الأقوى اليوم: حمّل آية واحدة، اقرأ مرة واحدة، توقف، راجع الكلمات المعلّمة، ثم أعد القراءة مع تشغيل الحصري.")}</p>
+            </div>
+            <div className="home-band__column">
+              <span className="status-label">{t("What feels different now", "ما الذي أصبح أوضح الآن")}</span>
+              <strong>{t("Less noise, more guided revision", "ضجيج أقل ومراجعة أوضح")}</strong>
+              <p>{t("The site is focused on the reading flow itself: current ayah, revision queue, direct replay, then next ayah.", "الموقع صار يركز على مسار القراءة نفسه: الآية الحالية، ثم قائمة المراجعة، ثم إعادة التشغيل، ثم الانتقال للآية التالية.")}</p>
+            </div>
+          </section>
+
           <section className="overview-grid">
             <article className="panel">
               <div className="panel-heading">
@@ -560,6 +631,22 @@ export default function App() {
                 ))}
               </div>
             </article>
+          </section>
+
+          <section className="home-cta panel">
+            <div>
+              <span className="eyebrow">{t("Ready to read", "جاهز للقراءة")}</span>
+              <h3>{t("Open the practice studio and move ayah by ayah.", "افتح استوديو التدريب وانتقل آية آية.")}</h3>
+              <p>{t("The current product is strongest when you treat it like a focused revision desk, not a full continuous mushaf yet.", "المنتج الحالي أقوى عندما تتعامل معه كمكتب مراجعة مركّز، وليس كمصحف كامل متواصل بعد.")}</p>
+            </div>
+            <div className="hero-actions">
+              <button className="button button--primary" onClick={() => setView("practice")}>
+                {t("Go to practice", "اذهب إلى التدريب")}
+              </button>
+              <button className="button button--ghost" onClick={() => setView("journey")}>
+                {t("View progress", "اعرض التقدم")}
+              </button>
+            </div>
           </section>
 
           <section className="panel">
@@ -654,8 +741,31 @@ export default function App() {
                 </div>
 
                 <div className="ayah-card">
+                  <div className="reading-flow">
+                    <div className="reading-flow__current">
+                      <span className="status-label">{t("Current ayah", "الآية الحالية")}</span>
+                      <strong>{t(`Ayah ${currentAyah}`, `الآية ${currentAyah}`)}</strong>
+                      <p>{t("Read this ayah in one calm pass, then stop for revision.", "اقرأ هذه الآية في مرور هادئ واحد، ثم توقف للمراجعة.")}</p>
+                    </div>
+                    <div className={nextAyahPayload ? "reading-flow__next reading-flow__next--ready" : "reading-flow__next"}>
+                      <span className="status-label">{t("Up next", "التالي")}</span>
+                      <strong>
+                        {nextAyahNumber ? t(`Ayah ${nextAyahNumber}`, `الآية ${nextAyahNumber}`) : t("End of surah", "نهاية السورة")}
+                      </strong>
+                      <p>
+                        {nextAyahNumber
+                          ? nextAyahPayload
+                            ? nextAyahText || t("Ready to open instantly.", "جاهزة للفتح فوراً.")
+                            : t("Preparing the next ayah in the background now.", "يتم تجهيز الآية التالية في الخلفية الآن.")
+                          : t("You are on the last ayah of this guided surah.", "أنت على آخر آية في هذه السورة الموجّهة.")}
+                      </p>
+                    </div>
+                  </div>
                   {loadingAyah ? (
-                    <p className="muted">{t("Loading ayah text…", "جاري تحميل نص الآية…")}</p>
+                    <div className="loading-block">
+                      <div className="loading-pulse loading-pulse--ayah" />
+                      <p className="muted">{t("Loading ayah text…", "جاري تحميل نص الآية…")}</p>
+                    </div>
                   ) : ayahText ? (
                     <>
                       <p className="ayah-ar">{ayahText}</p>
@@ -695,11 +805,11 @@ export default function App() {
                     </button>
                   )}
                   <button
-                    className="button button--ghost"
+                    className={nextAyahPayload ? "button button--primary button--soft" : "button button--ghost"}
                     onClick={nextAyah}
                     disabled={currentAyah === selectedSurah.verses || recitation.isRecording}
                   >
-                    {t("Next ayah", "الآية التالية")}
+                    {nextAyahPayload ? t("Next ayah is ready", "الآية التالية جاهزة") : t("Next ayah", "الآية التالية")}
                   </button>
                 </div>
 
@@ -854,6 +964,19 @@ export default function App() {
 
       {view === "makharij" && (
         <main className="page">
+          <section className="makharij-hero">
+            <div className="makharij-hero__copy">
+              <span className="eyebrow">{t("Letter sounds desk", "مكتب مخارج الحروف")}</span>
+              <h2>{t("Use this page to remember where the letter starts before you recite it.", "استخدم هذه الصفحة لتتذكر من أين يبدأ الحرف قبل أن تتلوه.")}</h2>
+              <p>{t("This is not a dense theory lesson. It is a quick practical guide for the letters the current feedback calls out most often.", "هذه ليست درساً نظرياً كثيفاً، بل دليل عملي سريع للحروف التي تستدعيها الملاحظات الحالية أكثر من غيرها.")}</p>
+            </div>
+            <div className="makharij-hero__note">
+              <span className="status-label">{t("How to use it", "كيف تستخدمه")}</span>
+              <strong>{t("Read the origin, then return to practice", "اقرأ المخرج ثم عد إلى التدريب")}</strong>
+              <p>{t("Keep this page as a quick reference between recitation attempts instead of trying to memorize everything at once.", "احتفظ بهذه الصفحة كمرجع سريع بين المحاولات بدلاً من محاولة حفظ كل شيء دفعة واحدة.")}</p>
+            </div>
+          </section>
+
           <section className="panel">
             <div className="panel-heading">
               <h2>{t("Letter sounds guide", "دليل مخارج الحروف")}</h2>
@@ -877,6 +1000,19 @@ export default function App() {
 
       {view === "journey" && (
         <main className="page">
+          <section className="journey-hero">
+            <div className="journey-hero__copy">
+              <span className="eyebrow">{t("Your reading journey", "رحلة قراءتك")}</span>
+              <h2>{t("A simple memory of the sessions you actually finished.", "ذاكرة بسيطة للجلسات التي أكملتها فعلاً.")}</h2>
+              <p>{t("This page stays intentionally light: recent sessions, saved summaries, and the one next step that matters most.", "هذه الصفحة تبقى خفيفة عمداً: الجلسات الأخيرة، والملخصات المحفوظة، والخطوة التالية الأهم فقط.")}</p>
+            </div>
+            <div className="journey-hero__note">
+              <span className="status-label">{t("Next useful step", "الخطوة المفيدة التالية")}</span>
+              <strong>{progress.summaries.length ? t("Repeat yesterday’s weakest ayah once more", "أعد أضعف آية من أمس مرة أخرى") : t("Complete one full practice pass first", "أكمل محاولة تدريب كاملة أولاً")}</strong>
+              <p>{progress.summaries.length ? t("The best progress comes from revisiting one recent weak spot instead of jumping around too fast.", "أفضل تقدم يأتي من مراجعة موضع ضعف قريب بدلاً من التنقل بسرعة بين مواضع كثيرة.") : t("As soon as you finish one live session, this page becomes useful and starts saving your summaries locally.", "بمجرد إنهاء جلسة مباشرة واحدة، تصبح هذه الصفحة مفيدة وتبدأ بحفظ الملخصات محلياً.")}</p>
+            </div>
+          </section>
+
           <section className="journey-grid">
             <article className="panel">
               <div className="panel-heading">

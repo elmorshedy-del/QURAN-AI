@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -134,19 +135,27 @@ def _resolve_manifest_audio_path(path: Path, *, surah: int) -> Path | None:
     return None
 
 
+@lru_cache(maxsize=128)
+def _load_surah_manifest(surah: int) -> dict[str, list[dict[str, object]]]:
+    config = load_config()
+    manifest_path = config.husary_word_audio_dir / str(surah) / "manifest.json"
+    if not manifest_path.exists():
+        return {}
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        manifest = {}
+    return manifest
+
+
 def _served_audio_url(surah: int, ayah: int, word_index: int) -> str | None:
     config = load_config()
     preferred = config.served_word_audio_dir / str(surah) / str(ayah) / f"{word_index}.mp3"
     if preferred.exists():
         return f"/audio/words/{surah}/{ayah}/{word_index}.mp3"
 
-    manifest_path = config.husary_word_audio_dir / str(surah) / "manifest.json"
-    if not manifest_path.exists():
-        return None
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
+    manifest = _load_surah_manifest(surah)
     clips = manifest.get(f"{surah}:{ayah}", [])
     for clip in clips:
         if int(clip.get("word_index", -1)) != word_index:
@@ -162,12 +171,29 @@ def _served_audio_url(surah: int, ayah: int, word_index: int) -> str | None:
     return None
 
 
+@lru_cache(maxsize=512)
+def _ayah_payload(surah: int, ayah: int) -> dict[str, object]:
+    words = quran_data.get(f"{surah}:{ayah}", [])
+    return {
+        "surah": surah,
+        "ayah": ayah,
+        "words": words,
+        "total_words": len(words),
+        "word_audio_urls": [
+            _served_audio_url(surah, ayah, index)
+            for index in range(len(words))
+        ],
+    }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     del app
     global checker, quran_data
     checker = MuaalemChecker(device=load_config().default_device)
     quran_data = load_quran_data()
+    _load_surah_manifest.cache_clear()
+    _ayah_payload.cache_clear()
     yield
 
 
@@ -209,18 +235,11 @@ async def recite_ws(websocket: WebSocket):
                     total_received_samples = 0
                     new_samples_since_eval = 0
                     provisional_tracker = {}
-                    words = quran_data.get(f"{current_surah}:{current_ayah}", [])
+                    payload = _ayah_payload(current_surah, current_ayah)
                     await websocket.send_json(
                         {
                             "type": "ready",
-                            "surah": current_surah,
-                            "ayah": current_ayah,
-                            "words": words,
-                            "total_words": len(words),
-                            "word_audio_urls": [
-                                _served_audio_url(current_surah, current_ayah, index)
-                                for index in range(len(words))
-                            ],
+                            **payload,
                             "backend": _backend_health_payload(),
                         }
                     )
@@ -280,18 +299,11 @@ async def recite_ws(websocket: WebSocket):
                     total_received_samples = 0
                     new_samples_since_eval = 0
                     provisional_tracker = {}
-                    words = quran_data.get(f"{current_surah}:{current_ayah}", [])
+                    payload = _ayah_payload(current_surah, current_ayah)
                     await websocket.send_json(
                         {
                             "type": "ready",
-                            "surah": current_surah,
-                            "ayah": current_ayah,
-                            "words": words,
-                            "total_words": len(words),
-                            "word_audio_urls": [
-                                _served_audio_url(current_surah, current_ayah, index)
-                                for index in range(len(words))
-                            ],
+                            **payload,
                         }
                     )
             elif "bytes" in data and is_active and checker is not None:
@@ -350,16 +362,7 @@ async def health():
 
 @app.get("/api/surah/{surah}/ayah/{ayah}")
 async def get_ayah(surah: int, ayah: int):
-    words = quran_data.get(f"{surah}:{ayah}", [])
-    return {
-        "surah": surah,
-        "ayah": ayah,
-        "words": words,
-        "word_audio_urls": [
-            _served_audio_url(surah, ayah, index)
-            for index in range(len(words))
-        ],
-    }
+    return _ayah_payload(surah, ayah)
 
 
 if __name__ == "__main__":
