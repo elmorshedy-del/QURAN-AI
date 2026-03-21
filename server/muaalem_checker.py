@@ -16,6 +16,7 @@ if str(SRC_ROOT) not in sys.path:
 from tajweed_ml.audio import load_audio
 from tajweed_ml.config import load_config
 from tajweed_ml.optional import require_dependency
+from tajweed_ml.quran_text import extract_arabic_letters
 from tajweed_ml.vendor_runtime import load_muaalem_vendor
 
 
@@ -118,6 +119,61 @@ def classify_phoneme_error(predicted: str, expected: str) -> tuple[str, str, str
     return "pronunciation", "general", f"Expected [{expected}], heard [{predicted}]"
 
 
+SENSITIVE_ONSET_LETTERS = {"ا", "أ", "إ", "ٱ", "ب"}
+
+
+def _is_sensitive_onset_phoneme(phoneme: str) -> bool:
+    value = str(phoneme or "").strip()
+    if not value or value == "(none)":
+        return False
+    return "ء" in value or "ب" in value or value.startswith("ʔ") or value.startswith("b")
+
+
+def _word_has_sensitive_onset(word: str) -> bool:
+    letters = extract_arabic_letters(word)
+    return bool(letters) and letters[0] in SENSITIVE_ONSET_LETTERS
+
+
+def _user_rule_label(error_type: str) -> str:
+    mapping = {
+        "makhraj": "Articulation",
+        "tafkheem": "Tafkheem",
+        "madd": "Madd",
+        "ghunnah": "Ghunnah",
+        "qalqalah": "Qalqalah",
+        "vowel": "Harakah",
+        "missing": "Pronunciation",
+        "extra": "Pronunciation",
+        "pronunciation": "Pronunciation",
+        "tajweed": "Tajweed",
+    }
+    return mapping.get(error_type, "Pronunciation")
+
+
+def _user_safe_description(error_type: str, expected: str, word: str) -> str:
+    if error_type == "makhraj":
+        return "Check the articulation point of this word and compare it with the reference recitation."
+    if error_type == "tafkheem":
+        return "This word needs a clearer heavy or light quality. Listen and repeat it with more contrast."
+    if error_type == "madd":
+        return "Hold the vowel longer in this word before moving to the next sound."
+    if error_type == "ghunnah":
+        return "Keep the nasal sound clear and steady in this word."
+    if error_type == "qalqalah":
+        return "Give the qalqalah letter a clearer bounce in this word."
+    if error_type == "vowel":
+        return "Check the short vowel in this word and recite it more carefully."
+    if error_type == "extra":
+        return "An extra sound may have slipped into this word. Slow down and recite it more cleanly."
+    if error_type == "missing":
+        if _is_sensitive_onset_phoneme(expected):
+            return "Check the opening sound of this word and begin it more clearly."
+        return "A sound in this word may need clearer pronunciation. Listen and repeat it carefully."
+    if word:
+        return f"Repeat {word} carefully and compare it with the reference."
+    return "Repeat this part carefully and compare it with the reference."
+
+
 class MuaalemChecker:
     def __init__(self, model_name: str = "obadx/muaalem-model-v3_2", device: str = "cpu"):
         torch = require_dependency("torch")
@@ -177,7 +233,7 @@ class MuaalemChecker:
         ayah: int | None = None,
     ):
         reference_text = self._reference_text(words, surah=surah, ayah=ayah)
-        return reference_text, self.quran_phonetizer(reference_text, self.moshaf, remove_spaces=True)
+        return reference_text, self.quran_phonetizer(reference_text, self.moshaf, remove_spaces=False)
 
     def _tokenizer_fallback(self, words: list[str]) -> list[str]:
         tokenizer = getattr(getattr(self, "processor", None), "tokenizer", None)
@@ -382,8 +438,47 @@ class MuaalemChecker:
                     confidence=0.95,
                 )
             )
-        return results
+        return self._postprocess_results(results, expected_words)
 
     def check_file(self, audio_path: str | Path, expected_words: list[str]) -> list[TajweedError]:
         waveform, sample_rate = load_audio(audio_path)
         return self.check(waveform.squeeze(0).cpu().numpy(), expected_words, sr=sample_rate)
+
+    def _postprocess_results(self, results: list[TajweedError], words: list[str]) -> list[TajweedError]:
+        filtered: list[TajweedError] = []
+        seen: set[tuple[object, ...]] = set()
+        for error in results:
+            word = words[error.word_index] if 0 <= error.word_index < len(words) else ""
+            if (
+                error.error_type == "missing"
+                and error.predicted_phoneme == "(skipped)"
+                and word
+                and _word_has_sensitive_onset(word)
+                and _is_sensitive_onset_phoneme(error.expected_phoneme)
+            ):
+                continue
+
+            key = (
+                error.word_index,
+                error.error_type,
+                error.expected_phoneme,
+                error.predicted_phoneme,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+
+            filtered.append(
+                TajweedError(
+                    word_index=error.word_index,
+                    expected_phoneme=error.expected_phoneme,
+                    predicted_phoneme=error.predicted_phoneme,
+                    error_type=error.error_type,
+                    rule=_user_rule_label(error.error_type),
+                    description_en=_user_safe_description(error.error_type, error.expected_phoneme, word),
+                    description_ar=error.description_ar,
+                    severity=error.severity,
+                    confidence=error.confidence,
+                )
+            )
+        return filtered

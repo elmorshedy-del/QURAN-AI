@@ -24,10 +24,68 @@ from tajweed_ml.quran_text import load_quran_text
 
 checker: MuaalemChecker | None = None
 quran_data: dict[str, list[str]] = {}
+MIN_BUFFER_BEFORE_EVAL_SEC = 2.4
+MIN_NEW_AUDIO_BEFORE_EVAL_SEC = 0.8
+OVERLAP_KEEP_SEC = 1.5
+PROVISIONAL_CONFIRMATIONS = 2
+PROVISIONAL_COOLDOWN_SEC = 1.2
 
 
 def load_quran_data() -> dict[str, list[str]]:
     return load_quran_text()
+
+
+def _sample_count(seconds: float) -> int:
+    return int(seconds * load_config().sample_rate)
+
+
+def _error_key(error) -> tuple[object, ...]:
+    return (
+        error.word_index,
+        error.rule,
+        error.error_type,
+        error.expected_phoneme,
+    )
+
+
+def _should_emit_provisional_error(
+    tracker: dict[tuple[object, ...], dict[str, int]],
+    error,
+    total_samples: int,
+) -> bool:
+    key = _error_key(error)
+    state = tracker.get(key)
+    if state is None or total_samples - state["last_seen"] > _sample_count(PROVISIONAL_COOLDOWN_SEC * 2):
+        state = {"count": 0, "last_seen": 0, "last_emitted": -10**9}
+        tracker[key] = state
+
+    state["count"] += 1
+    state["last_seen"] = total_samples
+    if state["count"] < PROVISIONAL_CONFIRMATIONS:
+        return False
+    if total_samples - state["last_emitted"] < _sample_count(PROVISIONAL_COOLDOWN_SEC):
+        return False
+
+    state["last_emitted"] = total_samples
+    return True
+
+
+def _backend_health_payload() -> dict[str, object]:
+    config = load_config()
+    return {
+        "status": "ok",
+        "service": "backend",
+        "ready": checker is not None,
+        "model_loaded": checker is not None,
+        "model": config.muaalem_model_name,
+        "device": config.default_device,
+        "ws_path": "/ws/recite",
+        "streaming": {
+            "min_buffer_ms": int(MIN_BUFFER_BEFORE_EVAL_SEC * 1000),
+            "new_audio_step_ms": int(MIN_NEW_AUDIO_BEFORE_EVAL_SEC * 1000),
+            "overlap_ms": int(OVERLAP_KEEP_SEC * 1000),
+        },
+    }
 
 
 def _resolve_manifest_audio_path(path: Path, *, surah: int) -> Path | None:
@@ -104,11 +162,14 @@ app.mount("/audio", StaticFiles(directory=str(load_config().audio_dir)), name="a
 @app.websocket("/ws/recite")
 async def recite_ws(websocket: WebSocket):
     await websocket.accept()
-    audio_buffer = np.array([], dtype=np.float32)
+    window_audio = np.array([], dtype=np.float32)
+    session_audio = np.array([], dtype=np.float32)
     current_surah = 1
     current_ayah = 1
-    current_word = 0
     is_active = False
+    total_received_samples = 0
+    new_samples_since_eval = 0
+    provisional_tracker: dict[tuple[object, ...], dict[str, int]] = {}
 
     try:
         while True:
@@ -120,9 +181,12 @@ async def recite_ws(websocket: WebSocket):
                 if message["type"] == "start":
                     current_surah = int(message.get("surah", 1))
                     current_ayah = int(message.get("ayah", 1))
-                    current_word = 0
-                    audio_buffer = np.array([], dtype=np.float32)
+                    window_audio = np.array([], dtype=np.float32)
+                    session_audio = np.array([], dtype=np.float32)
                     is_active = True
+                    total_received_samples = 0
+                    new_samples_since_eval = 0
+                    provisional_tracker = {}
                     words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                     await websocket.send_json(
                         {
@@ -131,14 +195,15 @@ async def recite_ws(websocket: WebSocket):
                             "ayah": current_ayah,
                             "words": words,
                             "total_words": len(words),
+                            "backend": _backend_health_payload(),
                         }
                     )
                 elif message["type"] == "stop":
                     is_active = False
                     words = quran_data.get(f"{current_surah}:{current_ayah}", [])
-                    if len(audio_buffer) > 0 and checker is not None and words:
+                    if len(session_audio) > 0 and checker is not None and words:
                         errors = checker.check(
-                            audio_buffer,
+                            session_audio,
                             words,
                             surah=current_surah,
                             ayah=current_ayah,
@@ -183,11 +248,16 @@ async def recite_ws(websocket: WebSocket):
                                 "errors": [],
                             }
                         )
-                    audio_buffer = np.array([], dtype=np.float32)
+                    window_audio = np.array([], dtype=np.float32)
+                    session_audio = np.array([], dtype=np.float32)
+                    provisional_tracker = {}
                 elif message["type"] == "next_ayah":
                     current_ayah += 1
-                    current_word = 0
-                    audio_buffer = np.array([], dtype=np.float32)
+                    window_audio = np.array([], dtype=np.float32)
+                    session_audio = np.array([], dtype=np.float32)
+                    total_received_samples = 0
+                    new_samples_since_eval = 0
+                    provisional_tracker = {}
                     words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                     await websocket.send_json(
                         {
@@ -200,55 +270,54 @@ async def recite_ws(websocket: WebSocket):
                     )
             elif "bytes" in data and is_active and checker is not None:
                 chunk = np.frombuffer(data["bytes"], dtype=np.int16).astype(np.float32) / 32768.0
-                audio_buffer = np.concatenate([audio_buffer, chunk])
-                buffer_duration = len(audio_buffer) / load_config().sample_rate
-                if buffer_duration < 2.0:
+                session_audio = np.concatenate([session_audio, chunk])
+                window_audio = np.concatenate([window_audio, chunk])
+                total_received_samples += len(chunk)
+                new_samples_since_eval += len(chunk)
+                if len(window_audio) < _sample_count(MIN_BUFFER_BEFORE_EVAL_SEC):
                     continue
+                if new_samples_since_eval < _sample_count(MIN_NEW_AUDIO_BEFORE_EVAL_SEC):
+                    continue
+                new_samples_since_eval = 0
                 words = quran_data.get(f"{current_surah}:{current_ayah}", [])
                 if not words:
                     continue
                 errors = checker.check(
-                    audio_buffer,
+                    window_audio,
                     words,
                     surah=current_surah,
                     ayah=current_ayah,
                 )
                 if errors:
                     top_error = errors[0]
-                    word_index = top_error.word_index
-                    await websocket.send_json(
-                        {
-                            "type": "correction",
-                            "word_index": word_index,
-                            "word_ar": words[word_index] if word_index < len(words) else "",
-                            "error_type": top_error.error_type,
-                            "rule": top_error.rule,
-                            "description": top_error.description_en,
-                            "severity": top_error.severity,
-                            "audio_url": _served_audio_url(current_surah, current_ayah, word_index),
-                        }
-                    )
-                else:
-                    await websocket.send_json({"type": "correct", "word_index": current_word})
-                    current_word += 1
-                overlap = int(0.5 * load_config().sample_rate)
-                audio_buffer = audio_buffer[-overlap:]
+                    if _should_emit_provisional_error(provisional_tracker, top_error, total_received_samples):
+                        word_index = top_error.word_index
+                        await websocket.send_json(
+                            {
+                                "type": "correction",
+                                "word_index": word_index,
+                                "word_ar": words[word_index] if word_index < len(words) else "",
+                                "error_type": top_error.error_type,
+                                "rule": top_error.rule,
+                                "description": top_error.description_en,
+                                "severity": top_error.severity,
+                                "audio_url": _served_audio_url(current_surah, current_ayah, word_index),
+                            }
+                        )
+                overlap = _sample_count(OVERLAP_KEEP_SEC)
+                window_audio = window_audio[-overlap:]
     except WebSocketDisconnect:
         return
 
 
 @app.get("/health")
 async def health_root():
-    return {"status": "ok"}
+    return _backend_health_payload()
 
 
 @app.get("/api/health")
 async def health():
-    return {
-        "status": "ok",
-        "model_loaded": checker is not None,
-        "model": load_config().muaalem_model_name,
-    }
+    return _backend_health_payload()
 
 
 @app.get("/api/surah/{surah}/ayah/{ayah}")

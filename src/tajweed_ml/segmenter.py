@@ -6,6 +6,7 @@ from pathlib import Path
 from .audio import load_audio
 from .config import load_config
 from .optional import require_dependency
+from .quran_text import normalize_arabic_text
 
 
 class SegmenterUnavailableError(RuntimeError):
@@ -15,7 +16,8 @@ class SegmenterUnavailableError(RuntimeError):
 def _normalize_text(value: object | None) -> str:
     if value is None:
         return ""
-    return " ".join(str(value).split())
+    compact = " ".join(str(value).split())
+    return normalize_arabic_text(compact)
 
 
 def _chunk_timestamp(chunk: dict[str, object]) -> tuple[float | None, float | None]:
@@ -65,12 +67,17 @@ class RecitationSegmenter:
         return self.model_name
 
     def report(self) -> dict[str, object]:
+        cached = self.config.segmenter_model_dir.exists()
+        loaded = self._runtime is not None
         return {
             "model_name": self.model_name,
             "device": self.device,
-            "cached": self.config.segmenter_model_dir.exists(),
+            "cached": cached,
             "cache_dir": str(self.config.segmenter_model_dir),
-            "loaded": self._runtime is not None,
+            "loaded": loaded,
+            "ready": cached and self._load_error is None,
+            "warm_loaded": loaded,
+            "status": "ready" if cached and self._load_error is None else "unavailable",
             "load_error": self._load_error,
         }
 
