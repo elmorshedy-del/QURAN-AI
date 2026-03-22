@@ -45,6 +45,7 @@ cleanup() {
 trap cleanup EXIT
 
 prepare_context() {
+  local service="$1"
   TEMP_CONTEXT="$(mktemp -d)"
 
   cp "${APP_ROOT}/Dockerfile" "${TEMP_CONTEXT}/Dockerfile"
@@ -58,6 +59,10 @@ prepare_context() {
   cp -R "${APP_ROOT}/ml" "${TEMP_CONTEXT}/ml"
   cp -R "${APP_ROOT}/server" "${TEMP_CONTEXT}/server"
   cp -R "${APP_ROOT}/data" "${TEMP_CONTEXT}/data"
+  if [[ "${service}" == "${BACKEND_SERVICE}" ]]; then
+    mkdir -p "${TEMP_CONTEXT}/audio/husary"
+    cp -R "${APP_ROOT}/audio/husary/words" "${TEMP_CONTEXT}/audio/husary/"
+  fi
 }
 
 deploy_service() {
@@ -65,7 +70,7 @@ deploy_service() {
   local image="$2"
   local dockerfile="$3"
 
-  prepare_context
+  prepare_context "${service}"
 
   gcloud builds submit "${TEMP_CONTEXT}" \
     --config cloudbuild.cloudrun.yaml \

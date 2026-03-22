@@ -15,7 +15,10 @@ tmp
 frontend/node_modules
 frontend/dist
 audio/husary/raw
-audio
+audio/*
+!audio/husary/
+audio/husary/*
+!audio/husary/words/
 data/buraaq/words
 ml/models
 ml/vendor
